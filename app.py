@@ -574,25 +574,31 @@ def show_login_screen():
     """Renders the login / signup UI and stops the app until the user authenticates."""
     # ---- Recovery-link bridge ----
     # Supabase password-reset emails redirect back here with the access token
-    # in the URL *fragment* (after #), which Streamlit can't see. The JS below
-    # detects that and reloads with the same data as query params instead.
+    # in the URL *fragment* (after #), which Streamlit can't see server-side.
+    # Streamlit's components.html runs inside a sandboxed iframe, so we must
+    # read the *parent* window's location, not the iframe's own.
     import streamlit.components.v1 as _components
     _components.html("""
     <script>
     (function () {
-        const hash = window.location.hash || '';
-        const search = window.location.search || '';
-        if (hash.includes('type=recovery') && !search.includes('recovery=1')) {
-            const params = new URLSearchParams(hash.substring(1));
-            const at = params.get('access_token') || '';
-            const rt = params.get('refresh_token') || '';
-            if (at) {
-                const newUrl = window.location.pathname
-                    + '?recovery=1'
-                    + '&access_token=' + encodeURIComponent(at)
-                    + '&refresh_token=' + encodeURIComponent(rt);
-                window.parent.location.replace(newUrl);
+        try {
+            const top = window.parent || window;
+            const hash = top.location.hash || '';
+            const search = top.location.search || '';
+            if (hash.includes('type=recovery') && !search.includes('recovery=1')) {
+                const params = new URLSearchParams(hash.substring(1));
+                const at = params.get('access_token') || '';
+                const rt = params.get('refresh_token') || '';
+                if (at) {
+                    const newUrl = top.location.pathname
+                        + '?recovery=1'
+                        + '&access_token=' + encodeURIComponent(at)
+                        + '&refresh_token=' + encodeURIComponent(rt);
+                    top.location.replace(newUrl);
+                }
             }
+        } catch (err) {
+            console.error('recovery-link bridge failed', err);
         }
     })();
     </script>
