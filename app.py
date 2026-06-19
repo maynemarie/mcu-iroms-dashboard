@@ -518,8 +518,96 @@ def get_allowed_user(email: str) -> Optional[Dict]:
         return None
 
 
+def show_password_reset_screen(access_token: str, refresh_token: str):
+    """Set-new-password screen reached via a Supabase recovery email link."""
+    st.markdown(f"""
+    <div class="mcu-header">
+      <h1>Manila Central University — Institutional Research Office</h1>
+      <div class="subtitle">Set a New Password</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.caption(
+        "You arrived here from a password-reset email. Pick a new password "
+        "below and you'll be able to log in with it immediately."
+    )
+
+    with st.form("set_new_password_form"):
+        new_pwd = st.text_input("New Password (min 8 characters) *",
+                                type="password", key="rp_newpwd")
+        new_pwd_confirm = st.text_input("Confirm New Password *",
+                                        type="password", key="rp_confirm")
+        submitted = st.form_submit_button("Set New Password", type="primary")
+
+        if submitted:
+            if not new_pwd or new_pwd != new_pwd_confirm:
+                st.error("❌ Passwords don't match.")
+            elif len(new_pwd) < 8:
+                st.error("❌ Password must be at least 8 characters.")
+            else:
+                try:
+                    sb.auth.set_session(access_token, refresh_token)
+                    sb.auth.update_user({"password": new_pwd})
+                    try:
+                        sb.auth.sign_out()
+                    except Exception:
+                        pass
+                    st.success(
+                        "✅ Password updated. Use the **Return to Login** "
+                        "button below to sign in with your new password.")
+                except Exception as e:
+                    msg = str(e)
+                    if "expired" in msg.lower() or "invalid" in msg.lower():
+                        st.error(
+                            "❌ This reset link has expired or has already "
+                            "been used. Go back to the login page and request "
+                            "a fresh **Forgot Password** link.")
+                    else:
+                        st.error(f"❌ Failed to set new password: {msg}")
+
+    if st.button("← Return to Login"):
+        st.query_params.clear()
+        st.rerun()
+
+
 def show_login_screen():
     """Renders the login / signup UI and stops the app until the user authenticates."""
+    # ---- Recovery-link bridge ----
+    # Supabase password-reset emails redirect back here with the access token
+    # in the URL *fragment* (after #), which Streamlit can't see. The JS below
+    # detects that and reloads with the same data as query params instead.
+    import streamlit.components.v1 as _components
+    _components.html("""
+    <script>
+    (function () {
+        const hash = window.location.hash || '';
+        const search = window.location.search || '';
+        if (hash.includes('type=recovery') && !search.includes('recovery=1')) {
+            const params = new URLSearchParams(hash.substring(1));
+            const at = params.get('access_token') || '';
+            const rt = params.get('refresh_token') || '';
+            if (at) {
+                const newUrl = window.location.pathname
+                    + '?recovery=1'
+                    + '&access_token=' + encodeURIComponent(at)
+                    + '&refresh_token=' + encodeURIComponent(rt);
+                window.parent.location.replace(newUrl);
+            }
+        }
+    })();
+    </script>
+    """, height=0)
+
+    # If we landed back via the JS bridge, show the password-reset form
+    # instead of the normal login tabs.
+    qp = st.query_params
+    if qp.get("recovery") == "1" and qp.get("access_token"):
+        show_password_reset_screen(
+            qp.get("access_token"),
+            qp.get("refresh_token", ""),
+        )
+        st.stop()
+
     st.markdown(f"""
     <div class="mcu-header">
       <h1>Manila Central University — Institutional Research Office</h1>
