@@ -531,7 +531,9 @@ def show_login_screen():
         st.error("Database not configured. Cannot log in.")
         st.stop()
 
-    tab_login, tab_signup = st.tabs(["🔑 Log In", "🆕 First-Time Sign Up"])
+    tab_login, tab_signup, tab_reset = st.tabs(
+        ["🔑 Log In", "🆕 First-Time Sign Up", "🔓 Forgot Password"]
+    )
 
     with tab_login:
         with st.form("login_form"):
@@ -606,6 +608,41 @@ def show_login_screen():
                     )
                 except Exception as e:
                     st.error(f"❌ Sign-up failed: {e}")
+
+    # ------ Forgot password ------
+    with tab_reset:
+        st.caption(
+            "If you've forgotten your password, enter your MCU email below. "
+            "We'll send a secure reset link from Supabase to your inbox — "
+            "click it to set a new password, then return here to log in."
+        )
+        with st.form("reset_form"):
+            reset_email = st.text_input(
+                "MCU Email *", placeholder="name@mcu.edu.ph", key="rp_email")
+            submit_reset = st.form_submit_button("Send Reset Link",
+                                                 type="primary")
+
+            if submit_reset:
+                if not reset_email or "@" not in reset_email:
+                    st.error("❌ Enter a valid email address.")
+                else:
+                    allowed = get_allowed_user(reset_email)
+                    if not allowed:
+                        st.error(
+                            "❌ This email isn't on the IRO allowlist. "
+                            "Contact the IRO Director to be added first.")
+                    else:
+                        try:
+                            sb.auth.reset_password_email(
+                                reset_email.lower().strip())
+                            st.success(
+                                f"✅ A password-reset link has been sent to "
+                                f"**{reset_email}**. Check your inbox (and "
+                                f"the spam folder). The link is valid for "
+                                f"about an hour.")
+                        except Exception as e:
+                            st.error(
+                                f"❌ Could not send reset email: {e}")
 
     st.divider()
     st.caption(
