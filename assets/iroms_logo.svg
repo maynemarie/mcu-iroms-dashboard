@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- IROMS browser favicon — stylised owl head paired with the "IROMS" mark.
+     MCU Purple Owls identity: deep purple base + gold accents.
+     Designed to read clearly at 16×16, 32×32, and 64×64 px favicon sizes. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+
+  <!-- Rounded-square background (MCU purple) -->
+  <rect width="128" height="128" rx="24" ry="24" fill="#5b21b6"/>
+
+  <!-- Subtle inner highlight ring -->
+  <rect x="4" y="4" width="120" height="120" rx="20" ry="20"
+        fill="none" stroke="#ffffff" stroke-opacity="0.08" stroke-width="2"/>
+
+  <!-- Owl feather tufts -->
+  <path d="M 36 30 L 44 18 L 52 30 Z" fill="#fbbf24"/>
+  <path d="M 76 30 L 84 18 L 92 30 Z" fill="#fbbf24"/>
+
+  <!-- Owl face (rounded body shape) -->
+  <path d="M 24 56
+           C 24 36, 44 28, 64 28
+           C 84 28, 104 36, 104 56
+           C 104 80, 92 96, 64 96
+           C 36 96, 24 80, 24 56 Z"
+        fill="#1e1b4b"/>
+
+  <!-- Eyes — large white circles for unmistakable owl read -->
+  <circle cx="46" cy="58" r="16" fill="#ffffff"/>
+  <circle cx="82" cy="58" r="16" fill="#ffffff"/>
+
+  <!-- Pupils with a tiny gold "insight" spark -->
+  <circle cx="46" cy="60" r="7" fill="#1e1b4b"/>
+  <circle cx="82" cy="60" r="7" fill="#1e1b4b"/>
+  <circle cx="48" cy="57" r="2" fill="#fbbf24"/>
+  <circle cx="84" cy="57" r="2" fill="#fbbf24"/>
+
+  <!-- Beak -->
+  <path d="M 60 72 L 64 80 L 68 72 Z" fill="#fbbf24"/>
+
+  <!-- IROMS wordmark badge at the base -->
+  <rect x="32" y="100" width="64" height="20" rx="10" ry="10"
+        fill="#fbbf24"/>
+  <text x="64" y="115" text-anchor="middle"
+        font-family="Inter, 'Helvetica Neue', Arial, sans-serif"
+        font-size="13" font-weight="800" letter-spacing="2"
+        fill="#5b21b6">IROMS</text>
+</svg>
