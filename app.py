@@ -566,53 +566,56 @@ def show_password_reset_screen(access_token: str, refresh_token: str):
                         st.error(f"❌ Failed to set new password: {msg}")
 
     if st.button("← Return to Login"):
+        st.session_state.pop("recovery_tokens", None)
         st.query_params.clear()
         st.rerun()
 
 
 def show_login_screen():
     """Renders the login / signup UI and stops the app until the user authenticates."""
-    # ---- Recovery-link bridge ----
-    # Supabase password-reset emails redirect back here with the access token
-    # in the URL *fragment* (after #), which Streamlit can't see server-side.
-    # Streamlit's components.html runs inside a sandboxed iframe, so we must
-    # read the *parent* window's location, not the iframe's own.
-    import streamlit.components.v1 as _components
-    _components.html("""
-    <script>
-    (function () {
-        try {
-            const top = window.parent || window;
-            const hash = top.location.hash || '';
-            const search = top.location.search || '';
-            if (hash.includes('type=recovery') && !search.includes('recovery=1')) {
-                const params = new URLSearchParams(hash.substring(1));
-                const at = params.get('access_token') || '';
-                const rt = params.get('refresh_token') || '';
-                if (at) {
-                    const newUrl = top.location.pathname
-                        + '?recovery=1'
-                        + '&access_token=' + encodeURIComponent(at)
-                        + '&refresh_token=' + encodeURIComponent(rt);
-                    top.location.replace(newUrl);
-                }
-            }
-        } catch (err) {
-            console.error('recovery-link bridge failed', err);
-        }
-    })();
-    </script>
-    """, height=0)
-
-    # If we landed back via the JS bridge, show the password-reset form
-    # instead of the normal login tabs.
+    # ---- Recovery-link handling ----
+    # Supabase password-reset emails are configured (Dashboard → Authentication
+    # → Email Templates → Reset Password) to link back here as:
+    #     {{ .SiteURL }}?token_hash={{ .TokenHash }}&type=recovery
+    # The token_hash arrives as an ordinary query param Streamlit can read
+    # server-side, so we verify it directly. (The previous approach relied on
+    # the token in the URL *fragment* and a JS snippet to promote it to a query
+    # param, but that snippet runs in Streamlit's sandboxed iframe, which is not
+    # allowed to navigate the top window — so the reset form never appeared.)
     qp = st.query_params
-    if qp.get("recovery") == "1" and qp.get("access_token"):
-        show_password_reset_screen(
-            qp.get("access_token"),
-            qp.get("refresh_token", ""),
-        )
+
+    # If we already verified the link earlier in this session, keep showing the
+    # set-new-password form. Reruns (e.g. the form submit) must not try to
+    # verify the now-consumed single-use token again.
+    if st.session_state.get("recovery_tokens"):
+        at, rt = st.session_state["recovery_tokens"]
+        show_password_reset_screen(at, rt)
         st.stop()
+
+    if qp.get("type") == "recovery" and qp.get("token_hash") and sb is not None:
+        try:
+            res = sb.auth.verify_otp(
+                {"token_hash": qp.get("token_hash"), "type": "recovery"}
+            )
+            session = getattr(res, "session", None)
+            if session is None:
+                raise RuntimeError("verify_otp returned no session")
+            # Cache the freshly minted session so later reruns don't re-verify
+            # the already-used token.
+            st.session_state["recovery_tokens"] = (
+                session.access_token, session.refresh_token
+            )
+            # Strip the token from the URL so it can't be reused or seen.
+            st.query_params.clear()
+            show_password_reset_screen(
+                session.access_token, session.refresh_token
+            )
+            st.stop()
+        except Exception:
+            st.error(
+                "❌ This password-reset link is invalid or has expired. "
+                "Request a fresh one from the **Forgot Password** tab below."
+            )
 
     st.markdown(f"""
     <div class="mcu-header">
