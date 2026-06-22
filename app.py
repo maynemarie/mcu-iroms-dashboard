@@ -156,6 +156,7 @@ st.markdown(f"""
         margin: -3rem -0.5rem 20px -0.5rem;
         box-shadow: 0 2px 12px rgba(91, 33, 182, 0.2);
         overflow: visible;
+        position: relative;
     }}
     /* Defaults — the inline styles in header_html override per-element */
     .mcu-header h1 {{ color: white; margin: 0; }}
@@ -165,16 +166,24 @@ st.markdown(f"""
     section[data-testid="stSidebar"] {{ display: none !important; }}
     [data-testid="collapsedControl"] {{ display: none !important; }}
 
-    /* ===== Top-right user identity chip ===== */
-    .user-chip {{
-        text-align: right;
-        font-size: 12px;
-        color: {NAVY};
-        line-height: 1.35;
-        padding: 2px 2px 6px 2px;
+    /* ===== Log-out icon in the banner's bottom-right corner ===== */
+    .banner-logout {{
+        position: absolute;
+        right: 20px;
+        bottom: 14px;
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        color: #fff !important;
+        opacity: 0.85;
+        text-decoration: none !important;
+        font-size: 12.5px;
+        font-weight: 600;
+        line-height: 1;
+        transition: opacity 0.15s ease, transform 0.15s ease;
     }}
-    .user-chip strong {{ color: {NAVY}; }}
-    .user-chip .role {{ font-size: 10px; opacity: 0.7; letter-spacing: 0.3px; }}
+    .banner-logout:hover {{ opacity: 1; transform: translateX(2px); }}
+    .banner-logout svg {{ display: block; }}
 
     /* ===== KPI / SECTION CARDS — wrap Streamlit columns in card-style frames ===== */
     /* Apply card styling to columns rows that look like KPI tiles */
@@ -533,8 +542,33 @@ HEADER_TITLE_STACK = (
 )
 
 
-def render_mcu_banner():
-    """Render the shared MCU IROMS brand banner (logo + title + tagline)."""
+DEFAULT_BANNER_SUBTITLE = (
+    "MCU · IROMS &mdash; Centralising research administration, "
+    "analytics and scholarly activity"
+)
+
+
+def render_mcu_banner(subtitle: str = DEFAULT_BANNER_SUBTITLE, logout: bool = False):
+    """Render the shared MCU IROMS brand banner (logo + title + subtitle).
+
+    When ``logout`` is True, a log-out icon (door + right-pointing arrow) is
+    placed in the banner's bottom-right corner; clicking it loads ``?logout=1``,
+    which the main flow handles by ending the session.
+    """
+    logout_html = ""
+    if logout:
+        logout_html = (
+            '<a class="banner-logout" href="?logout=1" target="_self" '
+            'title="Log out">'
+            '<span>Log out</span>'
+            '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" '
+            'stroke="currentColor" stroke-width="2" stroke-linecap="round" '
+            'stroke-linejoin="round">'
+            '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>'
+            '<polyline points="16 17 21 12 16 7"/>'
+            '<line x1="21" y1="12" x2="9" y2="12"/>'
+            '</svg></a>'
+        )
     # Load Montserrat (used only inside the header title — scoped via inline
     # font-family so no other text on the page is affected).
     st.markdown(
@@ -563,14 +597,15 @@ def render_mcu_banner():
         'letter-spacing:-0.005em;line-height:1.18;'
         f'font-family:{HEADER_TITLE_STACK};">'
         'Institutional Research Office Management System</h1>'
-        # Subtitle — tight against title
+        # Subtitle — tight against title (tagline by default; the dashboard
+        # passes the logged-in user's details here instead).
         '<div class="subtitle" style="margin:4px 0 0 0;font-size:15px;'
         'opacity:0.9;line-height:1.35;">'
-        'MCU · IROMS &mdash; Centralising research administration, '
-        'analytics and scholarly activity'
+        f'{subtitle}'
         '</div>'
         '</div>'
         '</div>'
+        f'{logout_html}'
         '</div>'
     )
     st.markdown(header_html, unsafe_allow_html=True)
@@ -936,28 +971,19 @@ def db_count(table: str) -> int:
 # ============================================================
 # HEADER + TOP-RIGHT USER IDENTITY
 # ============================================================
-render_mcu_banner()
+# Log-out via the banner icon (bottom-right) — it loads ?logout=1.
+if st.query_params.get("logout") == "1":
+    try:
+        if sb is not None:
+            sb.auth.sign_out()
+    except Exception:
+        pass
+    st.session_state.user = None
+    clear_session_cookie()
+    st.query_params.clear()
+    st.rerun()
 
-# User identity + logout — relocated from the (now removed) left sidebar to
-# the top-right of the page.
-_sp, _user_col = st.columns([6, 1])
-with _user_col:
-    role_emoji = "🛡️" if _IS_ADMIN else "👤"
-    st.markdown(
-        f'<div class="user-chip">{role_emoji} Logged in as<br>'
-        f'<strong>{_USER.get("name", "?")}</strong><br>'
-        f'<span class="role">Role: {_USER.get("role", "?").upper()}</span></div>',
-        unsafe_allow_html=True,
-    )
-    if st.button("🚪 Log Out", use_container_width=True, key="logout_top"):
-        try:
-            if sb is not None:
-                sb.auth.sign_out()
-        except Exception:
-            pass
-        st.session_state.user = None
-        clear_session_cookie()
-        st.rerun()
+render_mcu_banner(logout=True)
 
 # ============================================================
 # TOP-OF-PAGE NAVIGATION (always visible — no sidebar needed)
