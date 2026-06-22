@@ -185,6 +185,16 @@ st.markdown(f"""
     .banner-logout:hover {{ opacity: 1; transform: translateX(2px); }}
     .banner-logout svg {{ display: block; }}
 
+    /* ===== "Forgot your password?" link below the sign-in tabs ===== */
+    .forgot-row {{ text-align: center; margin: 10px 0 2px 0; }}
+    .forgot-link {{
+        color: {PURPLE};
+        font-size: 13px;
+        font-weight: 600;
+        text-decoration: none;
+    }}
+    .forgot-link:hover {{ text-decoration: underline; }}
+
     /* ===== KPI / SECTION CARDS — wrap Streamlit columns in card-style frames ===== */
     /* Apply card styling to columns rows that look like KPI tiles */
     [data-testid="stHorizontalBlock"] [data-testid="stVerticalBlock"] > [data-testid="stElementContainer"] {{
@@ -702,7 +712,7 @@ def show_login_screen():
         except Exception:
             st.error(
                 "❌ This password-reset link is invalid or has expired. "
-                "Request a fresh one from the **Forgot Password** tab below."
+                "Request a fresh one from the **Forgot your password?** link below."
             )
 
     render_mcu_banner()
@@ -712,8 +722,8 @@ def show_login_screen():
         st.error("Database not configured. Cannot log in.")
         st.stop()
 
-    tab_login, tab_signup, tab_reset = st.tabs(
-        ["🔑 Log In", "🆕 First-Time Sign Up", "🔓 Forgot Password"]
+    tab_login, tab_signup = st.tabs(
+        ["🔑 Log In", "🆕 First-Time Sign Up"]
     )
 
     with tab_login:
@@ -754,6 +764,59 @@ def show_login_screen():
                     else:
                         st.error(f"❌ Login failed: {msg}")
 
+        # ------ Forgot password — link shown ONLY on the Log In tab ------
+        # The link loads ?reset=1, which reveals the reset form in place.
+        if st.query_params.get("reset") != "1":
+            st.markdown(
+                '<div class="forgot-row">'
+                '<a class="forgot-link" href="?reset=1" target="_self">'
+                'Forgot your password?</a></div>',
+                unsafe_allow_html=True,
+            )
+        else:
+            st.markdown(
+                '<div class="forgot-row"><strong>🔓 Reset your password</strong></div>',
+                unsafe_allow_html=True,
+            )
+            st.caption(
+                "Enter your MCU email below. We'll send a secure reset link from "
+                "Supabase to your inbox — click it to set a new password, then "
+                "return here to log in."
+            )
+            with st.form("reset_form"):
+                reset_email = st.text_input(
+                    "MCU Email *", placeholder="name@mcu.edu.ph", key="rp_email")
+                submit_reset = st.form_submit_button("Send Reset Link",
+                                                     type="primary")
+
+                if submit_reset:
+                    if not reset_email or "@" not in reset_email:
+                        st.error("❌ Enter a valid email address.")
+                    else:
+                        allowed = get_allowed_user(reset_email)
+                        if not allowed:
+                            st.error(
+                                "❌ This email isn't on the IRO allowlist. "
+                                "Contact the IRO Director to be added first.")
+                        else:
+                            try:
+                                sb.auth.reset_password_email(
+                                    reset_email.lower().strip())
+                                st.success(
+                                    f"✅ A password-reset link has been sent to "
+                                    f"**{reset_email}**. Check your inbox (and "
+                                    f"the spam folder). The link is valid for "
+                                    f"about an hour.")
+                            except Exception as e:
+                                st.error(
+                                    f"❌ Could not send reset email: {e}")
+            st.markdown(
+                '<div class="forgot-row">'
+                '<a class="forgot-link" href="?" target="_self">'
+                '← Back to login</a></div>',
+                unsafe_allow_html=True,
+            )
+
     with tab_signup:
         st.caption(
             "Sign-up is only available to emails the IRO Director has pre-approved. "
@@ -789,41 +852,6 @@ def show_login_screen():
                     )
                 except Exception as e:
                     st.error(f"❌ Sign-up failed: {e}")
-
-    # ------ Forgot password ------
-    with tab_reset:
-        st.caption(
-            "If you've forgotten your password, enter your MCU email below. "
-            "We'll send a secure reset link from Supabase to your inbox — "
-            "click it to set a new password, then return here to log in."
-        )
-        with st.form("reset_form"):
-            reset_email = st.text_input(
-                "MCU Email *", placeholder="name@mcu.edu.ph", key="rp_email")
-            submit_reset = st.form_submit_button("Send Reset Link",
-                                                 type="primary")
-
-            if submit_reset:
-                if not reset_email or "@" not in reset_email:
-                    st.error("❌ Enter a valid email address.")
-                else:
-                    allowed = get_allowed_user(reset_email)
-                    if not allowed:
-                        st.error(
-                            "❌ This email isn't on the IRO allowlist. "
-                            "Contact the IRO Director to be added first.")
-                    else:
-                        try:
-                            sb.auth.reset_password_email(
-                                reset_email.lower().strip())
-                            st.success(
-                                f"✅ A password-reset link has been sent to "
-                                f"**{reset_email}**. Check your inbox (and "
-                                f"the spam folder). The link is valid for "
-                                f"about an hour.")
-                        except Exception as e:
-                            st.error(
-                                f"❌ Could not send reset email: {e}")
 
     st.divider()
     st.caption(
