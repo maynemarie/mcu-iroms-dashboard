@@ -45,7 +45,7 @@ st.set_page_config(
     page_title="MCU IROMS",
     page_icon=_resolve_favicon(),
     layout="wide",
-    initial_sidebar_state="expanded",
+    initial_sidebar_state="collapsed",
 )
 
 PURPLE = "#5b21b6"
@@ -160,6 +160,21 @@ st.markdown(f"""
     /* Defaults — the inline styles in header_html override per-element */
     .mcu-header h1 {{ color: white; margin: 0; }}
     .mcu-header .subtitle {{ opacity: 0.9; }}
+
+    /* ===== Hide the left sidebar entirely (identity moved to top-right) ===== */
+    section[data-testid="stSidebar"] {{ display: none !important; }}
+    [data-testid="collapsedControl"] {{ display: none !important; }}
+
+    /* ===== Top-right user identity chip ===== */
+    .user-chip {{
+        text-align: right;
+        font-size: 12px;
+        color: {NAVY};
+        line-height: 1.35;
+        padding: 2px 2px 6px 2px;
+    }}
+    .user-chip strong {{ color: {NAVY}; }}
+    .user-chip .role {{ font-size: 10px; opacity: 0.7; letter-spacing: 0.3px; }}
 
     /* ===== KPI / SECTION CARDS — wrap Streamlit columns in card-style frames ===== */
     /* Apply card styling to columns rows that look like KPI tiles */
@@ -383,37 +398,6 @@ st.markdown(f"""
         box-shadow: 0 1px 2px rgba(0,0,0,0.03);
     }}
 
-    /* ===== SIDEBAR — narrower so it doesn't eat content space ===== */
-    [data-testid="stSidebar"] {{
-        background: linear-gradient(180deg, {PURPLE} 0%, #4c1d95 100%);
-        width: 200px !important;
-        min-width: 200px !important;
-        max-width: 200px !important;
-        box-shadow: 4px 0 12px rgba(0,0,0,0.15);
-    }}
-    [data-testid="stSidebar"] > div:first-child {{
-        width: 200px !important;
-    }}
-    [data-testid="stSidebar"] * {{
-        color: white !important;
-    }}
-    [data-testid="stSidebar"] hr {{
-        border-color: rgba(255,255,255,0.2) !important;
-    }}
-
-    /* Sidebar banner */
-    .sidebar-banner {{
-        background: {GOLD};
-        color: {NAVY} !important;
-        padding: 12px;
-        margin: -4px -4px 16px -4px;
-        border-radius: 6px;
-        text-align: center;
-        font-weight: 700;
-        font-size: 13px;
-    }}
-    .sidebar-banner strong {{ color: {NAVY} !important; }}
-
     /* ===== TOP NAV DROPDOWN — make it look prominent ===== */
     [data-testid="stSelectbox"] [data-baseweb="select"] {{
         background: white;
@@ -518,14 +502,83 @@ def get_allowed_user(email: str) -> Optional[Dict]:
         return None
 
 
+# ============================================================
+# SHARED BRAND BANNER (used on the login screen AND the dashboard
+# so both show the identical header)
+# ============================================================
+import base64 as _b64
+from pathlib import Path as _Path
+
+
+def _load_mcu_logo_data_uri() -> str:
+    """Embed the local MCU logo as a base64 data URI so the HTML <img>
+    tag works without a public URL or static-serving route."""
+    try:
+        logo_path = _Path(__file__).parent / "assets" / "mcu_logo.png"
+        if logo_path.exists():
+            encoded = _b64.b64encode(logo_path.read_bytes()).decode("ascii")
+            return f"data:image/png;base64,{encoded}"
+    except Exception:
+        pass
+    # Fallback to the public web logo if the local file isn't available
+    return "https://mcu.edu.ph/wp-content/uploads/2024/01/MCU-logo@2x.png"
+
+
+MCU_LOGO_URL = _load_mcu_logo_data_uri()
+
+HEADER_TITLE_STACK = (
+    '"Addington CF", "Addington", "AddingtonCF",'
+    '"Montserrat", -apple-system, BlinkMacSystemFont, "Segoe UI",'
+    'Roboto, sans-serif'
+)
+
+
+def render_mcu_banner():
+    """Render the shared MCU IROMS brand banner (logo + title + tagline)."""
+    # Load Montserrat (used only inside the header title — scoped via inline
+    # font-family so no other text on the page is affected).
+    st.markdown(
+        '<link rel="preconnect" href="https://fonts.googleapis.com">'
+        '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>'
+        '<link href="https://fonts.googleapis.com/css2?'
+        'family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">',
+        unsafe_allow_html=True,
+    )
+    header_html = (
+        '<div class="mcu-header">'
+        # align-items:center lets the logo and text block share a vertical center.
+        '<div style="display:flex;align-items:center;gap:22px;">'
+        f'<img src="{MCU_LOGO_URL}" alt="MCU Logo" '
+        'style="height:68px;width:auto;flex-shrink:0;display:block;'
+        'filter:drop-shadow(0 2px 4px rgba(0,0,0,0.25));">'
+        # Text block: no extra padding — flex handles vertical alignment.
+        '<div style="display:flex;flex-direction:column;'
+        'justify-content:center;line-height:1.25;">'
+        # "Manila Central University" eyebrow — sits snug against the title
+        '<div style="font-size:14px;letter-spacing:2.5px;text-transform:uppercase;'
+        'opacity:0.9;font-weight:700;margin:0;line-height:1;">'
+        'Manila Central University</div>'
+        # Main title — Addington (with Montserrat Regular fallback, scoped here)
+        '<h1 style="margin:2px 0 0 0;font-size:28px;font-weight:400;'
+        'letter-spacing:-0.005em;line-height:1.18;'
+        f'font-family:{HEADER_TITLE_STACK};">'
+        'Institutional Research Office Management System</h1>'
+        # Subtitle — tight against title
+        '<div class="subtitle" style="margin:4px 0 0 0;font-size:15px;'
+        'opacity:0.9;line-height:1.35;">'
+        'MCU · IROMS &mdash; Centralising research administration, '
+        'analytics and scholarly activity'
+        '</div>'
+        '</div>'
+        '</div>'
+        '</div>'
+    )
+    st.markdown(header_html, unsafe_allow_html=True)
+
+
 def show_password_reset_screen(access_token: str, refresh_token: str):
     """Set-new-password screen reached via a Supabase recovery email link."""
-    st.markdown(f"""
-    <div class="mcu-header">
-      <h1>Manila Central University — Institutional Research Office</h1>
-      <div class="subtitle">Set a New Password</div>
-    </div>
-    """, unsafe_allow_html=True)
+    render_mcu_banner()
 
     st.caption(
         "You arrived here from a password-reset email. Pick a new password "
@@ -617,12 +670,8 @@ def show_login_screen():
                 "Request a fresh one from the **Forgot Password** tab below."
             )
 
-    st.markdown(f"""
-    <div class="mcu-header">
-      <h1>Manila Central University — Institutional Research Office</h1>
-      <div class="subtitle">Login Required · Allowlisted Users Only</div>
-    </div>
-    """, unsafe_allow_html=True)
+    render_mcu_banner()
+    st.caption("🔒 Login required — access is limited to allowlisted MCU IRO users.")
 
     if sb is None:
         st.error("Database not configured. Cannot log in.")
@@ -885,72 +934,30 @@ def db_count(table: str) -> int:
 
 
 # ============================================================
-# HEADER
+# HEADER + TOP-RIGHT USER IDENTITY
 # ============================================================
-import base64 as _b64
-from pathlib import Path as _Path
+render_mcu_banner()
 
-@st.cache_resource(show_spinner=False)
-def _load_mcu_logo_data_uri() -> str:
-    """Embed the local MCU logo as a base64 data URI so the HTML <img>
-    tag works without a public URL or static-serving route."""
-    try:
-        logo_path = _Path(__file__).parent / "assets" / "mcu_logo.png"
-        if logo_path.exists():
-            encoded = _b64.b64encode(logo_path.read_bytes()).decode("ascii")
-            return f"data:image/png;base64,{encoded}"
-    except Exception:
-        pass
-    # Fallback to the public web logo if the local file isn't available
-    return "https://mcu.edu.ph/wp-content/uploads/2024/01/MCU-logo@2x.png"
-
-MCU_LOGO_URL = _load_mcu_logo_data_uri()
-
-# Load Montserrat (used only inside the header title — scoped via inline
-# font-family so no other text on the page is affected).
-st.markdown(
-    '<link rel="preconnect" href="https://fonts.googleapis.com">'
-    '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>'
-    '<link href="https://fonts.googleapis.com/css2?'
-    'family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">',
-    unsafe_allow_html=True,
-)
-
-HEADER_TITLE_STACK = (
-    '"Addington CF", "Addington", "AddingtonCF",'
-    '"Montserrat", -apple-system, BlinkMacSystemFont, "Segoe UI",'
-    'Roboto, sans-serif'
-)
-header_html = (
-    '<div class="mcu-header">'
-    # align-items:center lets the logo and text block share a vertical center.
-    '<div style="display:flex;align-items:center;gap:22px;">'
-    f'<img src="{MCU_LOGO_URL}" alt="MCU Logo" '
-    'style="height:68px;width:auto;flex-shrink:0;display:block;'
-    'filter:drop-shadow(0 2px 4px rgba(0,0,0,0.25));">'
-    # Text block: no extra padding — flex handles vertical alignment.
-    '<div style="display:flex;flex-direction:column;'
-    'justify-content:center;line-height:1.25;">'
-    # "Manila Central University" eyebrow — sits snug against the title
-    '<div style="font-size:14px;letter-spacing:2.5px;text-transform:uppercase;'
-    'opacity:0.9;font-weight:700;margin:0;line-height:1;">'
-    'Manila Central University</div>'
-    # Main title — Addington (with Montserrat Regular fallback, scoped here)
-    '<h1 style="margin:2px 0 0 0;font-size:28px;font-weight:400;'
-    'letter-spacing:-0.005em;line-height:1.18;'
-    f'font-family:{HEADER_TITLE_STACK};">'
-    'Institutional Research Office Management System</h1>'
-    # Subtitle — tight against title
-    '<div class="subtitle" style="margin:4px 0 0 0;font-size:15px;'
-    'opacity:0.9;line-height:1.35;">'
-    'MCU · IROMS &mdash; Centralising research administration, '
-    'analytics and scholarly activity'
-    '</div>'
-    '</div>'
-    '</div>'
-    '</div>'
-)
-st.markdown(header_html, unsafe_allow_html=True)
+# User identity + logout — relocated from the (now removed) left sidebar to
+# the top-right of the page.
+_sp, _user_col = st.columns([6, 1])
+with _user_col:
+    role_emoji = "🛡️" if _IS_ADMIN else "👤"
+    st.markdown(
+        f'<div class="user-chip">{role_emoji} Logged in as<br>'
+        f'<strong>{_USER.get("name", "?")}</strong><br>'
+        f'<span class="role">Role: {_USER.get("role", "?").upper()}</span></div>',
+        unsafe_allow_html=True,
+    )
+    if st.button("🚪 Log Out", use_container_width=True, key="logout_top"):
+        try:
+            if sb is not None:
+                sb.auth.sign_out()
+        except Exception:
+            pass
+        st.session_state.user = None
+        clear_session_cookie()
+        st.rerun()
 
 # ============================================================
 # TOP-OF-PAGE NAVIGATION (always visible — no sidebar needed)
@@ -1124,41 +1131,9 @@ if sb is None:
     st.error("⚠️ Database not connected.")
 
 # ============================================================
-# SIDEBAR (still available, but optional now)
+# (Left sidebar removed — user identity / logout now live in the
+#  top-right of the page; see the HEADER section above.)
 # ============================================================
-with st.sidebar:
-    # ----- User identity banner -----
-    role_emoji = "🛡️" if _IS_ADMIN else "👤"
-    st.markdown(
-        f'<div class="sidebar-banner">{role_emoji} Logged in as<br>'
-        f'<strong>{_USER.get("name", "?")}</strong><br>'
-        f'<span style="font-size:10px;font-weight:400">'
-        f'Role: <strong>{_USER.get("role", "?").upper()}</strong></span></div>',
-        unsafe_allow_html=True,
-    )
-    if st.button("🚪 Log Out", use_container_width=True):
-        try:
-            if sb is not None:
-                sb.auth.sign_out()
-        except Exception:
-            pass
-        st.session_state.user = None
-        clear_session_cookie()
-        st.rerun()
-
-    st.markdown("### MCU IRO Dashboard")
-    if sb is None:
-        st.error("⚠️ Supabase not configured")
-    else:
-        st.success("✅ Database connected")
-
-    st.markdown("##### About this app")
-    st.caption(
-        "MCU IRO Dashboard — Streamlit + Supabase prototype. "
-        "Use the dropdown at the top of the main page to switch between views and forms."
-    )
-    st.divider()
-    st.caption(f"Refreshed: {datetime.now().strftime('%b %d, %Y · %H:%M')}")
 
 
 # ============================================================
