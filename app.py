@@ -890,11 +890,37 @@ def require_auth():
         show_login_screen()
 
 
+# Access roles, ordered from most to least privileged:
+#   admin    — every page
+#   standard — every page except User Management
+#   crc      — Dashboard, Data, E-Library and Submit pages only
+ROLES = ["admin", "standard", "crc"]
+
+# Human-friendly labels for the access roles. The stored value stays
+# "standard" (so existing accounts keep working); it just displays as
+# "IRO Member" everywhere users see it.
+ROLE_LABELS = {"admin": "Admin", "standard": "IRO Member", "crc": "CRC"}
+
+
+def role_label(role) -> str:
+    """Display label for a stored role value."""
+    return ROLE_LABELS.get((role or "").strip().lower(), (role or "?"))
+
+
 def require_admin(page_label: str):
     """Show error and stop if current user is not an admin."""
     u = current_user()
     if not u or u.get("role") != "admin":
         st.error(f"🔒 The **{page_label}** page requires Admin role. "
+                 "Contact the IRO Director if you need elevated access.")
+        st.stop()
+
+
+def require_roles(page_label: str, allowed_roles):
+    """Show error and stop if the current user's role isn't in allowed_roles."""
+    u = current_user()
+    if not u or u.get("role") not in allowed_roles:
+        st.error(f"🔒 The **{page_label}** page isn't available for your role. "
                  "Contact the IRO Director if you need elevated access.")
         st.stop()
 
@@ -1027,25 +1053,31 @@ render_mcu_banner(logout=True)
 # TOP-OF-PAGE NAVIGATION (always visible — no sidebar needed)
 # ============================================================
 ALL_PAGES_BY_ROLE = {
-    "📊 Overview": ["admin", "standard"],
-    "🌐 Research Ecosystem": ["admin", "standard"],
-    "📅 Calendar of Events": ["admin", "standard"],
-    "📚 Scopus Publications (view)": ["admin", "standard"],
-    "💰 In-House Grants (view)": ["admin", "standard"],
-    "🎓 Capacity-Building Workshops": ["admin", "standard"],
-    "🎤 Scholarly Engagements": ["admin", "standard"],
-    "📰 In-House Journal Publications": ["admin", "standard"],
-    "📜 IRO Policies": ["admin", "standard"],
-    "📁 IRO Presentations & Reports": ["admin"],
-    "📄 Project Reports (download / upload)": ["admin", "standard"],
-    "📚 Manage Scopus Publications": ["admin"],
-    "💰 Budget Utilisation": ["admin"],
-    "📝 Minutes of IRO Meeting": ["admin"],
-    "📋 Submit CRC Monthly Report": ["admin", "standard"],
-    "➕ In-House Grant Submission": ["admin", "standard"],
-    "➕ External Grant Submission": ["admin", "standard"],
-    "➕ Submit Scholarly Engagement": ["admin", "standard"],
-    "🎓 Manage Workshops": ["admin"],
+    # ----- Dashboard group — admin, standard, CRC -----
+    "📊 Overview": ["admin", "standard", "crc"],
+    "🌐 Research Ecosystem": ["admin", "standard", "crc"],
+    "📅 Calendar of Events": ["admin", "standard", "crc"],
+    # ----- Data group — admin, standard, CRC -----
+    "📚 Scopus Publications (view)": ["admin", "standard", "crc"],
+    "💰 In-House Grants (view)": ["admin", "standard", "crc"],
+    "🎓 Capacity-Building Workshops": ["admin", "standard", "crc"],
+    "🎤 Scholarly Engagements": ["admin", "standard", "crc"],
+    # ----- E-Library group — admin, standard, CRC -----
+    "📰 In-House Journal Publications": ["admin", "standard", "crc"],
+    "📜 IRO Policies": ["admin", "standard", "crc"],
+    # ----- Submit group — admin, standard, CRC -----
+    "📄 Project Reports (download / upload)": ["admin", "standard", "crc"],
+    "📋 Submit CRC Monthly Report": ["admin", "standard", "crc"],
+    "➕ In-House Grant Submission": ["admin", "standard", "crc"],
+    "➕ External Grant Submission": ["admin", "standard", "crc"],
+    "➕ Submit Scholarly Engagement": ["admin", "standard", "crc"],
+    # ----- Admin group — admin + standard (NOT CRC) -----
+    "📁 IRO Presentations & Reports": ["admin", "standard"],
+    "📚 Manage Scopus Publications": ["admin", "standard"],
+    "💰 Budget Utilisation": ["admin", "standard"],
+    "📝 Minutes of IRO Meeting": ["admin", "standard"],
+    "🎓 Manage Workshops": ["admin", "standard"],
+    # User Management stays admin-only
     "👥 User Management": ["admin"],
 }
 
@@ -3236,7 +3268,7 @@ elif page == "Scopus Publications (view)":
 # PAGE: SUBMIT SCOPUS DATA
 # ============================================================
 elif page == "Manage Scopus Publications":
-    require_admin("Manage Scopus Publications")
+    require_roles("Manage Scopus Publications", ["admin", "standard"])
     st.markdown('<div class="section-heading">Manage Scopus Publications</div>',
                 unsafe_allow_html=True)
     scopus_action = st.radio(
@@ -3978,7 +4010,7 @@ elif page == "Scholarly Engagements":
 # PAGE: UPLOAD WORKSHOP FEEDBACK (ADMIN ONLY)
 # ============================================================
 elif page == "Manage Workshops":
-    require_admin("Manage Workshops")
+    require_roles("Manage Workshops", ["admin", "standard"])
     st.markdown('<div class="section-heading">Manage Workshops</div>',
                 unsafe_allow_html=True)
     workshop_action = st.radio(
@@ -5656,7 +5688,7 @@ elif page == "IRO Policies":
 # PAGE: IRO PRESENTATIONS & REPORTS LIBRARY
 # ============================================================
 elif page == "IRO Presentations & Reports":
-    require_admin("IRO Presentations & Reports")
+    require_roles("IRO Presentations & Reports", ["admin", "standard"])
     st.markdown('<div class="section-heading">IRO Presentations &amp; Reports Library</div>',
                 unsafe_allow_html=True)
     st.caption(
@@ -5982,7 +6014,7 @@ elif page == "Project Reports (download / upload)":
 # PAGE: BUDGET UTILISATION (ADMIN ONLY)
 # ============================================================
 elif page == "Budget Utilisation":
-    require_admin("Budget Utilisation")
+    require_roles("Budget Utilisation", ["admin", "standard"])
     st.markdown('<div class="section-heading">Budget Utilisation</div>',
                 unsafe_allow_html=True)
     st.caption(
@@ -6638,7 +6670,7 @@ elif page == "Budget Utilisation":
 # PAGE: MINUTES OF IRO MEETING (ADMIN ONLY)
 # ============================================================
 elif page == "Minutes of IRO Meeting":
-    require_admin("Minutes of IRO Meeting")
+    require_roles("Minutes of IRO Meeting", ["admin", "standard"])
     st.markdown('<div class="section-heading">Minutes of IRO Meeting</div>',
                 unsafe_allow_html=True)
     st.caption(
@@ -6910,6 +6942,8 @@ elif page == "User Management":
     if users:
         st.markdown(f"**{len(users)} users on the allowlist**")
         df = pd.DataFrame(users)
+        if "role" in df.columns:
+            df["role"] = df["role"].map(role_label)
         display_cols = [c for c in
                         ["email", "full_name", "role", "active",
                          "added_by", "added_at"] if c in df.columns]
@@ -6939,7 +6973,7 @@ elif page == "User Management":
             new_email = st.text_input("Email *", placeholder="name@mcu.edu.ph")
         with c2:
             new_name = st.text_input("Full Name *", placeholder="Dr. Juan Dela Cruz")
-        new_role = st.selectbox("Role *", ["standard", "admin"])
+        new_role = st.selectbox("Role *", ["standard", "crc", "admin"], format_func=role_label)
         submit = st.form_submit_button("Add User", type="primary")
 
         if submit:
@@ -6976,7 +7010,8 @@ elif page == "User Management":
             cc1, cc2 = st.columns(2)
             with cc1:
                 new_role2 = st.selectbox("New Role",
-                                         ["standard", "admin"],
+                                         ["standard", "crc", "admin"],
+                                         format_func=role_label,
                                          key="modify_role")
             with cc2:
                 new_active = st.selectbox("Status",
@@ -7016,6 +7051,8 @@ elif page == "User Management":
         if _logins is not None:
             if _logins:
                 _ldf = pd.DataFrame(_logins)
+                if "role" in _ldf.columns:
+                    _ldf["role"] = _ldf["role"].map(role_label)
                 _lcols = [c for c in ["logged_in_at", "full_name", "email", "role"]
                           if c in _ldf.columns]
                 st.markdown(f"**{len(_logins)} most recent sign-ins**")
