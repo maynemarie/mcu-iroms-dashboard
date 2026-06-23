@@ -742,6 +742,16 @@ def show_login_screen():
                     sb.auth.sign_in_with_password(
                         {"email": email.lower().strip(), "password": password}
                     )
+                    # Record the successful login (best-effort) while the
+                    # session is still authenticated, then sign out.
+                    try:
+                        sb.table("access_log").insert({
+                            "email": allowed["email"],
+                            "full_name": allowed["full_name"],
+                            "role": allowed["role"],
+                        }).execute()
+                    except Exception:
+                        pass
                     # Immediately sign out the auth session — we manage identity
                     # via our own cookie. Keeping the client signed in means it
                     # uses a short-lived JWT for queries (expires after 1 hour).
@@ -6986,6 +6996,42 @@ elif page == "User Management":
                         st.success(f"✅ Updated {target}.")
                     except Exception as e:
                         st.error(f"❌ Failed: {e}")
+
+    st.divider()
+
+    # ----- Recent sign-ins (who has actually logged in, and when) -----
+    st.markdown("### 🕘 Recent Sign-Ins")
+    st.caption("The most recent successful logins to the dashboard.")
+    _logins = None
+    try:
+        _log_res = (sb.table("access_log").select("*")
+                    .order("logged_in_at", desc=True).limit(100).execute())
+        _logins = _log_res.data or []
+    except Exception:
+        st.info(
+            "Sign-in logging isn't set up yet — run `add_access_log.sql` in the "
+            "Supabase SQL Editor to create the `access_log` table."
+        )
+    if _logins is not None:
+        if _logins:
+            _ldf = pd.DataFrame(_logins)
+            _lcols = [c for c in ["logged_in_at", "full_name", "email", "role"]
+                      if c in _ldf.columns]
+            st.markdown(f"**{len(_logins)} most recent sign-ins**")
+            st.dataframe(
+                _ldf[_lcols] if _lcols else _ldf,
+                hide_index=True, use_container_width=True,
+                column_config={
+                    "logged_in_at": st.column_config.DatetimeColumn(
+                        "Signed In", format="YYYY-MM-DD HH:mm"),
+                    "full_name": st.column_config.TextColumn(
+                        "Full Name", width="medium"),
+                    "email": st.column_config.TextColumn("Email"),
+                    "role": st.column_config.TextColumn("Role"),
+                },
+            )
+        else:
+            st.info("No sign-ins recorded yet.")
 
 
 # ============================================================
