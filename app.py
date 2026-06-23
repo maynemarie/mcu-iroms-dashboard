@@ -3082,27 +3082,26 @@ elif page == "Scopus Publications (view)":
             fig.update_layout(bargap=0.55)
             st.plotly_chart(fig, use_container_width=True)
 
-        # ---------- 2. Publications by College (stacked by quartile) ----------
-        if "college" in df.columns and "quartile" in df.columns:
-            college_df = (df.assign(
-                              college=df["college"].fillna("Unassigned").replace("", "Unassigned"))
-                          .groupby(["college", "quartile"]).size()
-                          .reset_index(name="count"))
-            college_totals = (college_df.groupby("college")["count"].sum()
-                              .sort_values(ascending=True))
-            college_df["college"] = pd.Categorical(
-                college_df["college"], categories=college_totals.index, ordered=True)
-            college_df = college_df.sort_values(["college", "quartile"])
+        # ---------- 2. Publications by College — Year on Year ----------
+        if "college" in df.columns and "year" in df.columns:
+            college_year_df = (df.assign(
+                                   college=df["college"].fillna("Unassigned").replace("", "Unassigned"))
+                               .groupby(["year", "college"]).size()
+                               .reset_index(name="count"))
+            # Order colleges by overall total so the busiest lead the legend.
+            college_order = (college_year_df.groupby("college")["count"].sum()
+                             .sort_values(ascending=False).index.tolist())
+            college_year_df = college_year_df.sort_values("year")
             fig_c = px.bar(
-                college_df, y="college", x="count", color="quartile",
-                color_discrete_map=QUARTILE_COLORS,
-                category_orders={"quartile": ["Q1", "Q2", "Q3", "Q4", "NA"]},
-                barmode="stack", orientation="h",
-                height=max(280, 36 * len(college_totals) + 120),
+                college_year_df, x="year", y="count", color="college",
+                color_discrete_sequence=CATEGORICAL_COLORS,
+                category_orders={"college": college_order},
+                barmode="group", height=380,
             )
-            _style(fig_c, title="🏛️ Publications by College and Quartile")
-            fig_c.update_layout(bargap=0.45, xaxis_title="Publications",
-                                yaxis_title=None)
+            _style(fig_c, title="🏛️ Publications by College — Year on Year")
+            fig_c.update_layout(bargap=0.3, bargroupgap=0.06,
+                                xaxis_title=None, yaxis_title="Publications")
+            fig_c.update_xaxes(type="category")  # years as discrete categories
             st.plotly_chart(fig_c, use_container_width=True)
 
         # ---------- 3. Citation Impact Over Years (line + markers) ----------
@@ -3245,21 +3244,88 @@ elif page == "Scopus Publications (view)":
                          "open_access", "citation_count", "updated_by",
                          "updated_at"]
                         if c in filtered.columns]
-        st.dataframe(
-            filtered[display_cols] if display_cols else filtered,
-            hide_index=True, use_container_width=True,
-            column_config={
-                "lead_author": st.column_config.TextColumn("Lead Author"),
-                "authors":     st.column_config.TextColumn(
-                    "Co-Authors",
-                    help="Full author list as recorded on the paper",
-                    width="large"),
-                "title":       st.column_config.TextColumn(
-                    "Title", width="large"),
-                "journal":     st.column_config.TextColumn(
-                    "Journal", width="medium"),
-            },
+
+        # Admins get a temporary inline-edit option: type directly in the
+        # table and click Save to write the changes back to the database.
+        inline_edit = _IS_ADMIN and st.toggle(
+            "✏️ Edit inline (admin) — type directly in the table, then Save",
+            value=False, key="scopus_inline_edit",
         )
+
+        if inline_edit:
+            edit_cols = [c for c in (["id"] + display_cols)
+                         if c in filtered.columns
+                         and c not in ("updated_by", "updated_at")]
+            editable = filtered[edit_cols].copy()
+            edited = st.data_editor(
+                editable,
+                hide_index=True, use_container_width=True,
+                num_rows="fixed", disabled=["id"],
+                column_config={
+                    "id": st.column_config.NumberColumn(
+                        "ID", help="Row id (read-only)"),
+                    "year": st.column_config.NumberColumn("Year", format="%d"),
+                    "title": st.column_config.TextColumn("Title", width="large"),
+                    "lead_author": st.column_config.TextColumn("Lead Author"),
+                    "authors": st.column_config.TextColumn(
+                        "Co-Authors", width="large"),
+                    "journal": st.column_config.TextColumn(
+                        "Journal", width="medium"),
+                    "quartile": st.column_config.SelectboxColumn(
+                        "Quartile", options=["Q1", "Q2", "Q3", "Q4", "NA"]),
+                    "open_access": st.column_config.CheckboxColumn("Open Access"),
+                    "citation_count": st.column_config.NumberColumn(
+                        "Citations", format="%d"),
+                },
+                key="scopus_editor",
+            )
+            st.caption(
+                "Editing the rows currently shown. Adding/removing rows is done "
+                "on the **Manage Scopus Publications** page."
+            )
+            if st.button("💾 Save changes", type="primary",
+                         key="scopus_save_inline"):
+                orig = editable.set_index("id")
+                new = edited.set_index("id")
+                changed = 0
+                for rid in new.index:
+                    if rid not in orig.index:
+                        continue
+                    updates = {}
+                    for c in new.columns:
+                        ov, nv = orig.at[rid, c], new.at[rid, c]
+                        if pd.isna(ov) and pd.isna(nv):
+                            continue
+                        if ov != nv:
+                            updates[c] = (None if pd.isna(nv)
+                                          else (nv.item() if hasattr(nv, "item")
+                                                else nv))
+                    if updates:
+                        updates["updated_by"] = _USER.get("email", "admin")
+                        updates["updated_at"] = datetime.now().isoformat()
+                        if db_update("scopus_publications", int(rid), updates):
+                            changed += 1
+                if changed:
+                    st.success(f"✅ Updated {changed} publication(s).")
+                    st.rerun()
+                else:
+                    st.info("No changes detected.")
+        else:
+            st.dataframe(
+                filtered[display_cols] if display_cols else filtered,
+                hide_index=True, use_container_width=True,
+                column_config={
+                    "lead_author": st.column_config.TextColumn("Lead Author"),
+                    "authors":     st.column_config.TextColumn(
+                        "Co-Authors",
+                        help="Full author list as recorded on the paper",
+                        width="large"),
+                    "title":       st.column_config.TextColumn(
+                        "Title", width="large"),
+                    "journal":     st.column_config.TextColumn(
+                        "Journal", width="medium"),
+                },
+            )
     else:
         st.info("No publications logged yet. Use the **Submit Scopus Data** page to add some.")
 
@@ -5730,7 +5796,7 @@ elif page == "IRO Presentations & Reports":
             doc_date = st.date_input("Document Date", value=date.today())
         with c2:
             presenter = st.text_input("Author / Presenter / Owner",
-                                      placeholder="e.g., Dr. Charmaine Ng (IRO Director)")
+                                      placeholder="e.g., Dr. Charmaine Ng (Research Strategist)")
             uploaded_by = st.text_input("Your Name *",
                                         placeholder="e.g., Dr. Charmaine Ng")
 
