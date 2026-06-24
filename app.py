@@ -944,6 +944,41 @@ def _refresh_sb_on_jwt_expired(exc) -> bool:
     return False
 
 
+def _is_transient_conn_error(exc) -> bool:
+    """True for transient socket/connection errors that a retry can fix —
+    e.g. EAGAIN 'Resource temporarily unavailable', resets, disconnects,
+    timeouts. These happen when the cached client's connection goes stale."""
+    msg = str(exc).lower()
+    return any(s in msg for s in (
+        "temporarily unavailable", "errno 35", "errno 11",
+        "connection reset", "connection aborted", "broken pipe",
+        "server disconnected", "remoteprotocol", "connecterror",
+        "read timeout", "timed out", "connection error",
+    ))
+
+
+def _reset_supabase_client():
+    """Rebuild the cached Supabase client to recover a stale connection."""
+    global sb
+    try:
+        get_supabase.clear()
+    except Exception:
+        pass
+    sb = get_supabase()
+
+
+def _recover(exc) -> bool:
+    """Try to recover from a recoverable DB error before retrying once:
+    an expired JWT, or a transient connection drop (rebuild the client).
+    Returns True if a retry is worth attempting."""
+    if _refresh_sb_on_jwt_expired(exc):
+        return True
+    if _is_transient_conn_error(exc):
+        _reset_supabase_client()
+        return True
+    return False
+
+
 def db_select(table: str, order_col: str = "submitted_at", desc: bool = True) -> List[Dict]:
     """SELECT * FROM table ORDER BY col DESC."""
     if sb is None:
@@ -952,8 +987,8 @@ def db_select(table: str, order_col: str = "submitted_at", desc: bool = True) ->
         res = sb.table(table).select("*").order(order_col, desc=desc).execute()
         return res.data or []
     except Exception as e:
-        if _refresh_sb_on_jwt_expired(e):
-            # Retry once after clearing the expired session
+        if _recover(e):
+            # Retry once after recovering (fresh session / reconnect)
             try:
                 res = sb.table(table).select("*").order(order_col, desc=desc).execute()
                 return res.data or []
@@ -973,7 +1008,7 @@ def db_insert(table: str, row: dict) -> bool:
         sb.table(table).insert(row).execute()
         return True
     except Exception as e:
-        if _refresh_sb_on_jwt_expired(e):
+        if _recover(e):
             try:
                 sb.table(table).insert(row).execute()
                 return True
@@ -993,7 +1028,7 @@ def db_update(table: str, row_id, updates: dict) -> bool:
         sb.table(table).update(updates).eq("id", row_id).execute()
         return True
     except Exception as e:
-        if _refresh_sb_on_jwt_expired(e):
+        if _recover(e):
             try:
                 sb.table(table).update(updates).eq("id", row_id).execute()
                 return True
@@ -1023,7 +1058,7 @@ def db_count(table: str) -> int:
         res = sb.table(table).select("id", count="exact").execute()
         return res.count or 0
     except Exception as e:
-        if _refresh_sb_on_jwt_expired(e):
+        if _recover(e):
             try:
                 res = sb.table(table).select("id", count="exact").execute()
                 return res.count or 0
@@ -6822,95 +6857,135 @@ elif page == "Minutes of IRO Meeting":
                     parts.append(p)
         return parts
 
-    # ----- Past IRO Meetings (inline-editable table at the top) -----
-    st.markdown("**Past IRO Meetings**")
-    st.caption("Edit Date, Title, or Attendance directly in the table — "
-               "changes save automatically when you click out of the cell. "
-               "Use **📥 Open** in **View meeting minutes** to open the "
-               "document in a new tab.")
+    tab_view, tab_edit, tab_add = st.tabs(
+        ["📋 View Meetings", "✏️ Edit Meetings", "➕ Log a Meeting"])
 
-    if not minutes_rows:
-        st.info("No meeting minutes logged yet. Use **➕ Log a Meeting** below.")
-    else:
-        table_rows = []
-        for mr in minutes_rows:
-            attendees_list = _split_attendees(mr.get("attendees") or "")
-            attendees_full = "\n".join(attendees_list)
-            path = mr.get("doc_path") or ""
-            view_url = _signed_doc_url(path) if path else ""
-
-            try:
-                date_val = (datetime.fromisoformat(str(mr.get("meeting_date"))).date()
-                            if mr.get("meeting_date") else date.today())
-            except Exception:
-                date_val = date.today()
-
-            table_rows.append({
-                "Date":                  date_val,
-                "Title":                 mr.get("meeting_title") or "",
-                "No.":                   len(attendees_list),
-                "Attendance":            attendees_full,
-                "View meeting minutes":  view_url,
-                "Logged By":             mr.get("submitted_by") or "",
-            })
-
-        df_orig = pd.DataFrame(table_rows)
-        max_attendees = max((r["No."] for r in table_rows), default=1)
-        row_h = min(20 + max_attendees * 22, 320)
-
-        edited_df = st.data_editor(
-            df_orig,
-            hide_index=True, use_container_width=True,
-            row_height=row_h,
-            num_rows="fixed",
-            key="past_iro_meetings_editor",
-            column_config={
-                "Date":       st.column_config.DateColumn(
-                    "Date", format="MM/DD/YYYY"),
-                "Title":      st.column_config.TextColumn(
-                    "Title", width="medium"),
-                "No.":        st.column_config.NumberColumn(
-                    "No.", help="Attendee count", width="small",
-                    disabled=True),
-                "Attendance": st.column_config.TextColumn(
-                    "Attendance", width="large",
-                    help="Names of attendees, one per line"),
-                "View meeting minutes": st.column_config.LinkColumn(
-                    "View meeting minutes",
-                    help="Open the meeting file in a new tab",
-                    display_text="📥 Open",
-                    disabled=True),
-                "Logged By":             st.column_config.TextColumn(
-                    "Logged By", disabled=True),
-            },
-        )
-
-        # Persist any inline edits back to the DB.
-        for i, mr in enumerate(minutes_rows):
-            orig = df_orig.iloc[i]
-            new  = edited_df.iloc[i]
-            changes = {}
-            if new["Date"] != orig["Date"]:
-                changes["meeting_date"] = str(new["Date"])
-            if (new["Title"] or "") != (orig["Title"] or ""):
-                changes["meeting_title"] = new["Title"] or None
-            if (new["Attendance"] or "") != (orig["Attendance"] or ""):
-                changes["attendees"] = new["Attendance"]
-            if changes:
-                changes["updated_at"] = datetime.now().isoformat()
-                changes["updated_by"] = _USER.get("name") or "inline-edit"
+    with tab_view:
+        if not minutes_rows:
+            st.info("No meeting minutes logged yet. Use the **➕ Log a Meeting** tab.")
+        else:
+            mq = st.text_input("🔍 Search by title or attendee",
+                               key="minutes_view_search",
+                               placeholder="Type to filter meetings…")
+            shown = 0
+            for mr in minutes_rows:
+                m_title_v = mr.get("meeting_title") or "(untitled meeting)"
                 try:
-                    db_update("iro_meeting_minutes", mr["id"], changes)
-                    st.toast(f"✅ Saved changes for "
-                             f"{new['Date']}: {', '.join(changes.keys()).replace('_', ' ')}")
-                except Exception as ex:
-                    st.error(f"Failed to save row {i+1}: {ex}")
+                    d_v = (datetime.fromisoformat(str(mr.get("meeting_date"))).strftime("%m/%d/%Y")
+                           if mr.get("meeting_date") else "—")
+                except Exception:
+                    d_v = str(mr.get("meeting_date") or "—")
+                att_list = _split_attendees(mr.get("attendees") or "")
+                minutes_txt = mr.get("minutes") or ""
+                hay = f"{m_title_v} {mr.get('attendees') or ''}".lower()
+                if mq and mq.lower() not in hay:
+                    continue
+                shown += 1
+                with st.expander(f"📅 {d_v}  —  {m_title_v}", expanded=False):
+                    st.markdown(f"**Attendance ({len(att_list)}):** "
+                                + (", ".join(att_list) if att_list else "—"))
+                    if minutes_txt:
+                        st.markdown("**Minutes**")
+                        st.write(minutes_txt)
+                    else:
+                        st.caption("No minutes text recorded for this meeting.")
+                    path_v = mr.get("doc_path") or ""
+                    if path_v:
+                        url_v = _signed_doc_url(path_v)
+                        if url_v:
+                            st.link_button("📥 Open meeting document", url_v)
+                    st.caption(f"Logged by {mr.get('submitted_by') or '—'}")
+            if mq and shown == 0:
+                st.info("No meetings match your search.")
+
+    with tab_edit:
+        # ----- Past IRO Meetings (inline-editable table at the top) -----
+        st.markdown("**Past IRO Meetings**")
+        st.caption("Edit Date, Title, or Attendance directly in the table — "
+                   "changes save automatically when you click out of the cell. "
+                   "Use **📥 Open** in **View meeting minutes** to open the "
+                   "document in a new tab.")
+
+        if not minutes_rows:
+            st.info("No meeting minutes logged yet. Use **➕ Log a Meeting** below.")
+        else:
+            table_rows = []
+            for mr in minutes_rows:
+                attendees_list = _split_attendees(mr.get("attendees") or "")
+                attendees_full = "\n".join(attendees_list)
+                path = mr.get("doc_path") or ""
+                view_url = _signed_doc_url(path) if path else ""
+
+                try:
+                    date_val = (datetime.fromisoformat(str(mr.get("meeting_date"))).date()
+                                if mr.get("meeting_date") else date.today())
+                except Exception:
+                    date_val = date.today()
+
+                table_rows.append({
+                    "Date":                  date_val,
+                    "Title":                 mr.get("meeting_title") or "",
+                    "No.":                   len(attendees_list),
+                    "Attendance":            attendees_full,
+                    "View meeting minutes":  view_url,
+                    "Logged By":             mr.get("submitted_by") or "",
+                })
+
+            df_orig = pd.DataFrame(table_rows)
+            max_attendees = max((r["No."] for r in table_rows), default=1)
+            row_h = min(20 + max_attendees * 22, 320)
+
+            edited_df = st.data_editor(
+                df_orig,
+                hide_index=True, use_container_width=True,
+                row_height=row_h,
+                num_rows="fixed",
+                key="past_iro_meetings_editor",
+                column_config={
+                    "Date":       st.column_config.DateColumn(
+                        "Date", format="MM/DD/YYYY"),
+                    "Title":      st.column_config.TextColumn(
+                        "Title", width="medium"),
+                    "No.":        st.column_config.NumberColumn(
+                        "No.", help="Attendee count", width="small",
+                        disabled=True),
+                    "Attendance": st.column_config.TextColumn(
+                        "Attendance", width="large",
+                        help="Names of attendees, one per line"),
+                    "View meeting minutes": st.column_config.LinkColumn(
+                        "View meeting minutes",
+                        help="Open the meeting file in a new tab",
+                        display_text="📥 Open",
+                        disabled=True),
+                    "Logged By":             st.column_config.TextColumn(
+                        "Logged By", disabled=True),
+                },
+            )
+
+            # Persist any inline edits back to the DB.
+            for i, mr in enumerate(minutes_rows):
+                orig = df_orig.iloc[i]
+                new  = edited_df.iloc[i]
+                changes = {}
+                if new["Date"] != orig["Date"]:
+                    changes["meeting_date"] = str(new["Date"])
+                if (new["Title"] or "") != (orig["Title"] or ""):
+                    changes["meeting_title"] = new["Title"] or None
+                if (new["Attendance"] or "") != (orig["Attendance"] or ""):
+                    changes["attendees"] = new["Attendance"]
+                if changes:
+                    changes["updated_at"] = datetime.now().isoformat()
+                    changes["updated_by"] = _USER.get("name") or "inline-edit"
+                    try:
+                        db_update("iro_meeting_minutes", mr["id"], changes)
+                        st.toast(f"✅ Saved changes for "
+                                 f"{new['Date']}: {', '.join(changes.keys()).replace('_', ' ')}")
+                    except Exception as ex:
+                        st.error(f"Failed to save row {i+1}: {ex}")
 
 
-    st.divider()
 
-    # ----- Add new meeting -----
-    with st.expander("➕ Log a Meeting", expanded=False):
+    with tab_add:
         with st.form("add_iro_minutes_form", clear_on_submit=True):
             mc1, mc2 = st.columns([1, 2])
             with mc1:
