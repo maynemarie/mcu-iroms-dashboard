@@ -6948,20 +6948,30 @@ elif page == "IRO Meetings":
             },
         )
 
-        # Save edits explicitly (reliable) — type in the cells above, then click.
+        # Save edits explicitly — read the edits straight from the editor's
+        # own state (the reliable source of truth), not a df comparison.
         if st.button("💾 Save table changes", type="primary",
                      key="save_iro_meetings"):
+            editor_state = st.session_state.get("past_iro_meetings_editor", {})
+            edited_rows = (editor_state.get("edited_rows", {})
+                           if isinstance(editor_state, dict) else {})
+            field_for = {"Date": "meeting_date", "Title": "meeting_title",
+                         "Attendance": "attendees"}
             saved = failed = 0
-            for i, mr in enumerate(minutes_rows):
-                orig = df_orig.iloc[i]
-                new  = edited_df.iloc[i]
+            for row_pos, changed_cols in edited_rows.items():
+                try:
+                    mr = minutes_rows[int(row_pos)]
+                except (IndexError, ValueError, TypeError):
+                    continue
                 changes = {}
-                if new["Date"] != orig["Date"]:
-                    changes["meeting_date"] = str(new["Date"])
-                if (new["Title"] or "") != (orig["Title"] or ""):
-                    changes["meeting_title"] = new["Title"] or None
-                if (new["Attendance"] or "") != (orig["Attendance"] or ""):
-                    changes["attendees"] = new["Attendance"]
+                for col, field in field_for.items():
+                    if col in changed_cols:
+                        val = changed_cols[col]
+                        if col == "Date":
+                            val = str(val)
+                        elif field == "meeting_title":
+                            val = val or None
+                        changes[field] = val
                 if changes:
                     changes["updated_at"] = datetime.now().isoformat()
                     changes["updated_by"] = _USER.get("name") or "inline-edit"
@@ -6969,15 +6979,16 @@ elif page == "IRO Meetings":
                         saved += 1
                     else:
                         failed += 1   # db_update already shows the error
-            if saved:
-                st.success(f"✅ Saved {saved} change(s).")
             if failed:
                 st.error(f"❌ {failed} change(s) could not be saved "
                          "(see the error message above).")
-            if not saved and not failed:
-                st.info("No changes to save.")
             if saved:
+                st.toast(f"✅ Saved {saved} change(s).")
                 st.rerun()
+            elif not failed:
+                st.warning("No edits detected. Type in a cell, press **Enter** "
+                           "(or click another cell) to commit it, then click "
+                           "**Save table changes**.")
 
     st.divider()
 
