@@ -6845,6 +6845,24 @@ elif page == "IRO Meetings":
             url = f"{url}{sep}download={quote(download_name)}"
         return url
 
+    def _view_url(path: str, filename: str = "") -> str:
+        """URL that opens the document *in the browser*.
+
+        PDFs / images / text render inline directly. Office files (Word,
+        Excel, PowerPoint) can't be shown natively by a browser, so they
+        are routed through the Microsoft Office web viewer, which renders
+        them in-browser from the signed URL.
+        """
+        url = _signed_doc_url(path)
+        if not url:
+            return ""
+        ext = (filename or path or "").lower().rsplit(".", 1)[-1]
+        if ext in ("doc", "docx", "ppt", "pptx", "xls", "xlsx"):
+            from urllib.parse import quote
+            return ("https://view.officeapps.live.com/op/view.aspx?src="
+                    + quote(url, safe=""))
+        return url
+
     def _split_attendees(raw: str) -> list[str]:
         """Break the attendance text into individual names."""
         if not raw:
@@ -6872,11 +6890,11 @@ elif page == "IRO Meetings":
             attendees_list = _split_attendees(mr.get("attendees") or "")
             attendees_full = "\n".join(attendees_list)
             path = mr.get("doc_path") or ""
-            view_url = _signed_doc_url(path) if path else ""
             _dl_name = ((mr.get("doc_filenames") or [None])[0]
                         or (path.split("/")[-1] if path else None))
             download_url = (_signed_doc_url(path, download_name=_dl_name)
                             if path else "")
+            view_url = _view_url(path, _dl_name) if path else ""
 
             try:
                 date_val = (datetime.fromisoformat(str(mr.get("meeting_date"))).date()
