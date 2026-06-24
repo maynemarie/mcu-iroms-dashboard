@@ -6877,8 +6877,8 @@ elif page == "IRO Meetings":
 
     # ----- Past IRO Meetings (inline-editable table at the top) -----
     st.markdown("**Past IRO Meetings**")
-    st.caption("Edit Date, Title, or Attendance directly in the table — "
-               "changes save automatically when you click out of the cell. "
+    st.caption("Edit Date, Title, or Attendance directly in the table, then "
+               "click **💾 Save table changes** below. "
                "Use **📥 Download** to save the uploaded document, or "
                "**👁 View** to open it within the browser.")
 
@@ -6948,26 +6948,36 @@ elif page == "IRO Meetings":
             },
         )
 
-        # Persist any inline edits back to the DB.
-        for i, mr in enumerate(minutes_rows):
-            orig = df_orig.iloc[i]
-            new  = edited_df.iloc[i]
-            changes = {}
-            if new["Date"] != orig["Date"]:
-                changes["meeting_date"] = str(new["Date"])
-            if (new["Title"] or "") != (orig["Title"] or ""):
-                changes["meeting_title"] = new["Title"] or None
-            if (new["Attendance"] or "") != (orig["Attendance"] or ""):
-                changes["attendees"] = new["Attendance"]
-            if changes:
-                changes["updated_at"] = datetime.now().isoformat()
-                changes["updated_by"] = _USER.get("name") or "inline-edit"
-                try:
-                    db_update("iro_meeting_minutes", mr["id"], changes)
-                    st.toast(f"✅ Saved changes for "
-                             f"{new['Date']}: {', '.join(changes.keys()).replace('_', ' ')}")
-                except Exception as ex:
-                    st.error(f"Failed to save row {i+1}: {ex}")
+        # Save edits explicitly (reliable) — type in the cells above, then click.
+        if st.button("💾 Save table changes", type="primary",
+                     key="save_iro_meetings"):
+            saved = failed = 0
+            for i, mr in enumerate(minutes_rows):
+                orig = df_orig.iloc[i]
+                new  = edited_df.iloc[i]
+                changes = {}
+                if new["Date"] != orig["Date"]:
+                    changes["meeting_date"] = str(new["Date"])
+                if (new["Title"] or "") != (orig["Title"] or ""):
+                    changes["meeting_title"] = new["Title"] or None
+                if (new["Attendance"] or "") != (orig["Attendance"] or ""):
+                    changes["attendees"] = new["Attendance"]
+                if changes:
+                    changes["updated_at"] = datetime.now().isoformat()
+                    changes["updated_by"] = _USER.get("name") or "inline-edit"
+                    if db_update("iro_meeting_minutes", mr["id"], changes):
+                        saved += 1
+                    else:
+                        failed += 1   # db_update already shows the error
+            if saved:
+                st.success(f"✅ Saved {saved} change(s).")
+            if failed:
+                st.error(f"❌ {failed} change(s) could not be saved "
+                         "(see the error message above).")
+            if not saved and not failed:
+                st.info("No changes to save.")
+            if saved:
+                st.rerun()
 
     st.divider()
 
