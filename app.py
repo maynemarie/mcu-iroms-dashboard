@@ -1110,7 +1110,7 @@ ALL_PAGES_BY_ROLE = {
     "📁 IRO Presentations & Reports": ["admin", "standard"],
     "📚 Manage Scopus Publications": ["admin", "standard"],
     "💰 Budget Utilisation": ["admin", "standard"],
-    "📝 Minutes of IRO Meeting": ["admin", "standard"],
+    "📝 IRO Meetings": ["admin", "standard"],
     "🎓 Manage Workshops": ["admin", "standard"],
     # User Management stays admin-only
     "👥 User Management": ["admin"],
@@ -1140,7 +1140,7 @@ PAGE_GROUPS = {
         "📚 Manage Scopus Publications",
         "🎓 Manage Workshops",
         "💰 Budget Utilisation",
-        "📝 Minutes of IRO Meeting",
+        "📝 IRO Meetings",
         "📁 IRO Presentations & Reports",
         "👥 User Management",
     ],
@@ -6770,9 +6770,9 @@ elif page == "Budget Utilisation":
 # ============================================================
 # PAGE: MINUTES OF IRO MEETING (ADMIN ONLY)
 # ============================================================
-elif page == "Minutes of IRO Meeting":
-    require_roles("Minutes of IRO Meeting", ["admin", "standard"])
-    st.markdown('<div class="section-heading">Minutes of IRO Meeting</div>',
+elif page == "IRO Meetings":
+    require_roles("IRO Meetings", ["admin", "standard"])
+    st.markdown('<div class="section-heading">IRO Meetings</div>',
                 unsafe_allow_html=True)
     st.caption(
         "Record and review minutes from Institutional Research Office meetings "
@@ -6857,213 +6857,180 @@ elif page == "Minutes of IRO Meeting":
                     parts.append(p)
         return parts
 
-    tab_view, tab_edit, tab_add = st.tabs(
-        ["📋 View Meetings", "✏️ Edit Meetings", "➕ Log a Meeting"])
+    # ----- Past IRO Meetings (inline-editable table at the top) -----
+    st.markdown("**Past IRO Meetings**")
+    st.caption("Edit Date, Title, or Attendance directly in the table — "
+               "changes save automatically when you click out of the cell. "
+               "Use **📥 Download** to save the uploaded document, or "
+               "**👁 View** to open it within the browser.")
 
-    with tab_view:
-        if not minutes_rows:
-            st.info("No meeting minutes logged yet. Use the **➕ Log a Meeting** tab.")
-        else:
-            mq = st.text_input("🔍 Search by title or attendee",
-                               key="minutes_view_search",
-                               placeholder="Type to filter meetings…")
-            shown = 0
-            for mr in minutes_rows:
-                m_title_v = mr.get("meeting_title") or "(untitled meeting)"
+    if not minutes_rows:
+        st.info("No meeting minutes logged yet. Use **➕ Log a Meeting** below.")
+    else:
+        table_rows = []
+        for mr in minutes_rows:
+            attendees_list = _split_attendees(mr.get("attendees") or "")
+            attendees_full = "\n".join(attendees_list)
+            path = mr.get("doc_path") or ""
+            view_url = _signed_doc_url(path) if path else ""
+            _dl_name = ((mr.get("doc_filenames") or [None])[0]
+                        or (path.split("/")[-1] if path else None))
+            download_url = (_signed_doc_url(path, download_name=_dl_name)
+                            if path else "")
+
+            try:
+                date_val = (datetime.fromisoformat(str(mr.get("meeting_date"))).date()
+                            if mr.get("meeting_date") else date.today())
+            except Exception:
+                date_val = date.today()
+
+            table_rows.append({
+                "Date":                  date_val,
+                "Title":                 mr.get("meeting_title") or "",
+                "No.":                   len(attendees_list),
+                "Attendance":            attendees_full,
+                "Download":              download_url,
+                "View":                  view_url,
+                "Logged By":             mr.get("submitted_by") or "",
+            })
+
+        df_orig = pd.DataFrame(table_rows)
+        max_attendees = max((r["No."] for r in table_rows), default=1)
+        row_h = min(20 + max_attendees * 22, 320)
+
+        edited_df = st.data_editor(
+            df_orig,
+            hide_index=True, use_container_width=True,
+            row_height=row_h,
+            num_rows="fixed",
+            key="past_iro_meetings_editor",
+            column_config={
+                "Date":       st.column_config.DateColumn(
+                    "Date", format="MM/DD/YYYY"),
+                "Title":      st.column_config.TextColumn(
+                    "Title", width="medium"),
+                "No.":        st.column_config.NumberColumn(
+                    "No.", help="Attendee count", width="small",
+                    disabled=True),
+                "Attendance": st.column_config.TextColumn(
+                    "Attendance", width="large",
+                    help="Names of attendees, one per line"),
+                "Download": st.column_config.LinkColumn(
+                    "Download",
+                    help="Download the uploaded meeting document",
+                    display_text="📥 Download",
+                    disabled=True),
+                "View": st.column_config.LinkColumn(
+                    "View",
+                    help="View the document within the browser",
+                    display_text="👁 View",
+                    disabled=True),
+                "Logged By":             st.column_config.TextColumn(
+                    "Logged By", disabled=True),
+            },
+        )
+
+        # Persist any inline edits back to the DB.
+        for i, mr in enumerate(minutes_rows):
+            orig = df_orig.iloc[i]
+            new  = edited_df.iloc[i]
+            changes = {}
+            if new["Date"] != orig["Date"]:
+                changes["meeting_date"] = str(new["Date"])
+            if (new["Title"] or "") != (orig["Title"] or ""):
+                changes["meeting_title"] = new["Title"] or None
+            if (new["Attendance"] or "") != (orig["Attendance"] or ""):
+                changes["attendees"] = new["Attendance"]
+            if changes:
+                changes["updated_at"] = datetime.now().isoformat()
+                changes["updated_by"] = _USER.get("name") or "inline-edit"
                 try:
-                    d_v = (datetime.fromisoformat(str(mr.get("meeting_date"))).strftime("%m/%d/%Y")
-                           if mr.get("meeting_date") else "—")
-                except Exception:
-                    d_v = str(mr.get("meeting_date") or "—")
-                att_list = _split_attendees(mr.get("attendees") or "")
-                minutes_txt = mr.get("minutes") or ""
-                hay = f"{m_title_v} {mr.get('attendees') or ''}".lower()
-                if mq and mq.lower() not in hay:
-                    continue
-                shown += 1
-                with st.expander(f"📅 {d_v}  —  {m_title_v}", expanded=False):
-                    st.markdown(f"**Attendance ({len(att_list)}):** "
-                                + (", ".join(att_list) if att_list else "—"))
-                    if minutes_txt:
-                        st.markdown("**Minutes**")
-                        st.write(minutes_txt)
-                    else:
-                        st.caption("No minutes text recorded for this meeting.")
-                    path_v = mr.get("doc_path") or ""
-                    if path_v:
-                        url_v = _signed_doc_url(path_v)
-                        if url_v:
-                            st.link_button("📥 Open meeting document", url_v)
-                    st.caption(f"Logged by {mr.get('submitted_by') or '—'}")
-            if mq and shown == 0:
-                st.info("No meetings match your search.")
+                    db_update("iro_meeting_minutes", mr["id"], changes)
+                    st.toast(f"✅ Saved changes for "
+                             f"{new['Date']}: {', '.join(changes.keys()).replace('_', ' ')}")
+                except Exception as ex:
+                    st.error(f"Failed to save row {i+1}: {ex}")
 
-    with tab_edit:
-        # ----- Past IRO Meetings (inline-editable table at the top) -----
-        st.markdown("**Past IRO Meetings**")
-        st.caption("Edit Date, Title, or Attendance directly in the table — "
-                   "changes save automatically when you click out of the cell. "
-                   "Use **📥 Open** in **View meeting minutes** to open the "
-                   "document in a new tab.")
+    st.divider()
 
-        if not minutes_rows:
-            st.info("No meeting minutes logged yet. Use **➕ Log a Meeting** below.")
-        else:
-            table_rows = []
-            for mr in minutes_rows:
-                attendees_list = _split_attendees(mr.get("attendees") or "")
-                attendees_full = "\n".join(attendees_list)
-                path = mr.get("doc_path") or ""
-                view_url = _signed_doc_url(path) if path else ""
+    with st.form("add_iro_minutes_form", clear_on_submit=True):
+        mc1, mc2 = st.columns([1, 2])
+        with mc1:
+            m_date = st.date_input("Meeting Date *",
+                                   value=date.today(),
+                                   format="MM/DD/YYYY")
+        with mc2:
+            m_title = st.text_input(
+                "Meeting Title",
+                placeholder="e.g., Monthly Coordination Meeting")
 
-                try:
-                    date_val = (datetime.fromisoformat(str(mr.get("meeting_date"))).date()
-                                if mr.get("meeting_date") else date.today())
-                except Exception:
-                    date_val = date.today()
+        m_attendees = st.text_area(
+            "Attendance *", max_chars=2000, height=120,
+            placeholder="One name per line, or comma-separated. "
+                        "e.g., Dr. Charmaine Ng (Chair), Dr. Cruz, "
+                        "Mr. De Leon …")
 
-                table_rows.append({
-                    "Date":                  date_val,
-                    "Title":                 mr.get("meeting_title") or "",
-                    "No.":                   len(attendees_list),
-                    "Attendance":            attendees_full,
-                    "View meeting minutes":  view_url,
-                    "Logged By":             mr.get("submitted_by") or "",
-                })
+        st.markdown("**Meeting Document**")
+        st.caption("Drag and drop a meeting minutes file below, **or** "
+                   "paste the minutes text into the field underneath. "
+                   "Either (or both) is fine.")
 
-            df_orig = pd.DataFrame(table_rows)
-            max_attendees = max((r["No."] for r in table_rows), default=1)
-            row_h = min(20 + max_attendees * 22, 320)
+        m_doc = st.file_uploader(
+            "Drop a file here (PDF, Word, image, etc.)",
+            type=["pdf", "docx", "doc", "txt", "rtf", "md",
+                  "xlsx", "xls", "csv",
+                  "png", "jpg", "jpeg"],
+            accept_multiple_files=False,
+            help="Single file, max 200 MB",
+        )
 
-            edited_df = st.data_editor(
-                df_orig,
-                hide_index=True, use_container_width=True,
-                row_height=row_h,
-                num_rows="fixed",
-                key="past_iro_meetings_editor",
-                column_config={
-                    "Date":       st.column_config.DateColumn(
-                        "Date", format="MM/DD/YYYY"),
-                    "Title":      st.column_config.TextColumn(
-                        "Title", width="medium"),
-                    "No.":        st.column_config.NumberColumn(
-                        "No.", help="Attendee count", width="small",
-                        disabled=True),
-                    "Attendance": st.column_config.TextColumn(
-                        "Attendance", width="large",
-                        help="Names of attendees, one per line"),
-                    "View meeting minutes": st.column_config.LinkColumn(
-                        "View meeting minutes",
-                        help="Open the meeting file in a new tab",
-                        display_text="📥 Open",
-                        disabled=True),
-                    "Logged By":             st.column_config.TextColumn(
-                        "Logged By", disabled=True),
-                },
-            )
+        m_minutes = st.text_area(
+            "…or paste meeting minutes here",
+            max_chars=20000, height=240,
+            placeholder="Paste the meeting minutes / discussion notes "
+                        "directly here.")
 
-            # Persist any inline edits back to the DB.
-            for i, mr in enumerate(minutes_rows):
-                orig = df_orig.iloc[i]
-                new  = edited_df.iloc[i]
-                changes = {}
-                if new["Date"] != orig["Date"]:
-                    changes["meeting_date"] = str(new["Date"])
-                if (new["Title"] or "") != (orig["Title"] or ""):
-                    changes["meeting_title"] = new["Title"] or None
-                if (new["Attendance"] or "") != (orig["Attendance"] or ""):
-                    changes["attendees"] = new["Attendance"]
-                if changes:
-                    changes["updated_at"] = datetime.now().isoformat()
-                    changes["updated_by"] = _USER.get("name") or "inline-edit"
+        m_submitted = st.form_submit_button("💾 Save Meeting",
+                                            type="primary")
+        if m_submitted:
+            if not m_attendees:
+                st.error("Attendance is required.")
+            elif not (m_doc or m_minutes):
+                st.error("Attach a document or paste the minutes "
+                         "before saving.")
+            else:
+                # Upload the file to Supabase Storage (best-effort).
+                doc_path = None
+                if m_doc is not None and sb is not None:
                     try:
-                        db_update("iro_meeting_minutes", mr["id"], changes)
-                        st.toast(f"✅ Saved changes for "
-                                 f"{new['Date']}: {', '.join(changes.keys()).replace('_', ' ')}")
-                    except Exception as ex:
-                        st.error(f"Failed to save row {i+1}: {ex}")
+                        ts = datetime.now().strftime("%Y%m%dT%H%M%S")
+                        doc_path = f"meeting-minutes/{m_date}_{ts}_{m_doc.name}"
+                        # Guess content-type from filename if Streamlit
+                        # didn't supply one — important so PDFs/images
+                        # render inline when "Open" is clicked.
+                        import mimetypes as _mt
+                        ctype = m_doc.type or _mt.guess_type(
+                            m_doc.name)[0] or "application/octet-stream"
+                        sb.storage.from_("grant-reports").upload(
+                            doc_path, m_doc.getvalue(),
+                            {"content-type":        ctype,
+                             "content-disposition": "inline"})
+                    except Exception as e:
+                        st.warning(
+                            f"Binary upload failed: {e}. "
+                            f"Metadata still saved.")
 
-
-
-    with tab_add:
-        with st.form("add_iro_minutes_form", clear_on_submit=True):
-            mc1, mc2 = st.columns([1, 2])
-            with mc1:
-                m_date = st.date_input("Meeting Date *",
-                                       value=date.today(),
-                                       format="MM/DD/YYYY")
-            with mc2:
-                m_title = st.text_input(
-                    "Meeting Title",
-                    placeholder="e.g., Monthly Coordination Meeting")
-
-            m_attendees = st.text_area(
-                "Attendance *", max_chars=2000, height=120,
-                placeholder="One name per line, or comma-separated. "
-                            "e.g., Dr. Charmaine Ng (Chair), Dr. Cruz, "
-                            "Mr. De Leon …")
-
-            st.markdown("**Meeting Document**")
-            st.caption("Drag and drop a meeting minutes file below, **or** "
-                       "paste the minutes text into the field underneath. "
-                       "Either (or both) is fine.")
-
-            m_doc = st.file_uploader(
-                "Drop a file here (PDF, Word, image, etc.)",
-                type=["pdf", "docx", "doc", "txt", "rtf", "md",
-                      "xlsx", "xls", "csv",
-                      "png", "jpg", "jpeg"],
-                accept_multiple_files=False,
-                help="Single file, max 200 MB",
-            )
-
-            m_minutes = st.text_area(
-                "…or paste meeting minutes here",
-                max_chars=20000, height=240,
-                placeholder="Paste the meeting minutes / discussion notes "
-                            "directly here.")
-
-            m_submitted = st.form_submit_button("💾 Save Meeting",
-                                                type="primary")
-            if m_submitted:
-                if not m_attendees:
-                    st.error("Attendance is required.")
-                elif not (m_doc or m_minutes):
-                    st.error("Attach a document or paste the minutes "
-                             "before saving.")
-                else:
-                    # Upload the file to Supabase Storage (best-effort).
-                    doc_path = None
-                    if m_doc is not None and sb is not None:
-                        try:
-                            ts = datetime.now().strftime("%Y%m%dT%H%M%S")
-                            doc_path = f"meeting-minutes/{m_date}_{ts}_{m_doc.name}"
-                            # Guess content-type from filename if Streamlit
-                            # didn't supply one — important so PDFs/images
-                            # render inline when "Open" is clicked.
-                            import mimetypes as _mt
-                            ctype = m_doc.type or _mt.guess_type(
-                                m_doc.name)[0] or "application/octet-stream"
-                            sb.storage.from_("grant-reports").upload(
-                                doc_path, m_doc.getvalue(),
-                                {"content-type":        ctype,
-                                 "content-disposition": "inline"})
-                        except Exception as e:
-                            st.warning(
-                                f"Binary upload failed: {e}. "
-                                f"Metadata still saved.")
-
-                    row = {
-                        "meeting_date":  str(m_date),
-                        "meeting_title": m_title or None,
-                        "attendees":     m_attendees,
-                        "minutes":       m_minutes or None,
-                        "doc_filenames": [m_doc.name] if m_doc else [],
-                        "doc_path":      doc_path,
-                        "submitted_by":  _USER.get("name") or None,
-                    }
-                    if db_insert("iro_meeting_minutes", row):
-                        st.success(f"✅ Meeting logged for {m_date}.")
+                row = {
+                    "meeting_date":  str(m_date),
+                    "meeting_title": m_title or None,
+                    "attendees":     m_attendees,
+                    "minutes":       m_minutes or None,
+                    "doc_filenames": [m_doc.name] if m_doc else [],
+                    "doc_path":      doc_path,
+                    "submitted_by":  _USER.get("name") or None,
+                }
+                if db_insert("iro_meeting_minutes", row):
+                    st.success(f"✅ Meeting logged for {m_date}.")
 
 
 # ============================================================
