@@ -1090,6 +1090,7 @@ render_mcu_banner(logout=True)
 ALL_PAGES_BY_ROLE = {
     # ----- Dashboard group — admin, standard, CRC -----
     "📊 Overview": ["admin", "standard", "crc"],
+    "📈 CRC Progress": ["admin", "standard", "crc"],
     "🌐 Research Ecosystem": ["admin", "standard", "crc"],
     "📅 Calendar of Events": ["admin", "standard", "crc"],
     # ----- Data group — admin, standard, CRC -----
@@ -1118,7 +1119,7 @@ ALL_PAGES_BY_ROLE = {
 
 # Group pages into categories for the 2-level menu
 PAGE_GROUPS = {
-    "Dashboard": ["📊 Overview", "🌐 Research Ecosystem", "📅 Calendar of Events"],
+    "Dashboard": ["📊 Overview", "📈 CRC Progress", "🌐 Research Ecosystem", "📅 Calendar of Events"],
     "Data": [
         "📚 Scopus Publications (view)",
         "💰 In-House Grants (view)",
@@ -7220,6 +7221,150 @@ elif page == "User Management":
 
 
 # ============================================================
+# PAGE: CRC PROGRESS — research goals tracker
+# ============================================================
+elif page == "CRC Progress":
+    require_roles("CRC Progress", ["admin", "standard", "crc"])
+    st.markdown('<div class="section-heading">CRC Progress — Research Goals Tracker</div>',
+                unsafe_allow_html=True)
+    st.caption("Monthly progress from College Research Coordinators — collaborations, "
+               "grant applications, and Scopus output from faculty and students.")
+
+    _crc_rows = db_select("crc_monthly_reports", order_col="submitted_at",
+                          desc=True) or []
+    if not _crc_rows:
+        st.info("No CRC monthly reports submitted yet.")
+    else:
+        cdf = pd.DataFrame(_crc_rows)
+        # Make sure every metric column exists (graceful if migration not yet run).
+        _metric_cols = ["scopus_faculty", "scopus_student", "grants_applied",
+                        "new_collaborations", "students_engaged",
+                        "manuscripts_submitted", "manuscripts_under_review",
+                        "manuscripts_accepted", "new_grants_count",
+                        "publications_count", "workshops_count", "trainings_count"]
+        for _c in _metric_cols:
+            if _c not in cdf.columns:
+                cdf[_c] = 0
+            cdf[_c] = pd.to_numeric(cdf[_c], errors="coerce").fillna(0).astype(int)
+
+        _MONTHS_AB = ["", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul",
+                      "Aug", "Sep", "Oct", "Nov", "Dec"]
+        if "reporting_month" in cdf and "reporting_year" in cdf:
+            cdf["reporting_month"] = pd.to_numeric(
+                cdf["reporting_month"], errors="coerce").fillna(0).astype(int)
+            cdf["reporting_year"] = pd.to_numeric(
+                cdf["reporting_year"], errors="coerce").fillna(0).astype(int)
+            cdf["Period"] = cdf.apply(
+                lambda r: f"{_MONTHS_AB[r['reporting_month']] if 1 <= r['reporting_month'] <= 12 else '?'} "
+                          f"{r['reporting_year']}", axis=1)
+            cdf["period_key"] = cdf["reporting_year"] * 100 + cdf["reporting_month"]
+
+        # ----- Filters -----
+        _fc1, _fc2 = st.columns(2)
+        with _fc1:
+            _years = (sorted(cdf["reporting_year"].unique().tolist(), reverse=True)
+                      if "reporting_year" in cdf else [])
+            _year_sel = st.multiselect("Year", _years, default=[])
+        with _fc2:
+            _colleges = (sorted(cdf["college"].dropna().unique().tolist())
+                         if "college" in cdf else [])
+            _college_sel = st.multiselect("College", _colleges, default=[])
+        fdf = cdf.copy()
+        if _year_sel:
+            fdf = fdf[fdf["reporting_year"].isin(_year_sel)]
+        if _college_sel:
+            fdf = fdf[fdf["college"].isin(_college_sel)]
+
+        # ----- KPIs -----
+        k1, k2, k3, k4, k5 = st.columns(5)
+        k1.metric("Scopus — Faculty", int(fdf["scopus_faculty"].sum()))
+        k2.metric("Scopus — Students", int(fdf["scopus_student"].sum()))
+        k3.metric("Grants Applied", int(fdf["grants_applied"].sum()))
+        k4.metric("New Collaborations", int(fdf["new_collaborations"].sum()))
+        k5.metric("Students Engaged", int(fdf["students_engaged"].sum()))
+
+        st.divider()
+
+        if len(fdf) and "college" in fdf.columns:
+            # Scopus output by college — faculty vs students
+            _byc = (fdf.groupby("college")[["scopus_faculty", "scopus_student"]]
+                    .sum().reset_index())
+            _mlt = _byc.melt(id_vars="college",
+                             value_vars=["scopus_faculty", "scopus_student"],
+                             var_name="Type", value_name="Count")
+            _mlt["Type"] = _mlt["Type"].map({"scopus_faculty": "Faculty",
+                                             "scopus_student": "Students"})
+            _figc = px.bar(_mlt, x="college", y="Count", color="Type",
+                           barmode="group", height=340,
+                           color_discrete_map={"Faculty": BRAND["slate"],
+                                               "Students": BRAND["tan"]},
+                           title="Scopus output by college — faculty vs students")
+            _figc.update_layout(xaxis_title=None, yaxis_title="Publications",
+                                template="plotly_white",
+                                paper_bgcolor="rgba(0,0,0,0)",
+                                plot_bgcolor="rgba(0,0,0,0)")
+            st.plotly_chart(_figc, use_container_width=True)
+
+        if len(fdf) and "period_key" in fdf.columns:
+            _tr = (fdf.groupby(["period_key", "Period"])
+                   [["scopus_faculty", "scopus_student"]].sum()
+                   .reset_index().sort_values("period_key"))
+            _tr["Total Scopus"] = _tr["scopus_faculty"] + _tr["scopus_student"]
+            _figt = px.line(_tr, x="Period", y="Total Scopus", markers=True,
+                            height=300, title="Scopus output trend")
+            _figt.update_traces(line=dict(color=BRAND["plum"], width=3),
+                                marker=dict(size=9, color=BRAND["plum"]))
+            _figt.update_layout(xaxis_title=None, template="plotly_white",
+                                paper_bgcolor="rgba(0,0,0,0)",
+                                plot_bgcolor="rgba(0,0,0,0)")
+            st.plotly_chart(_figt, use_container_width=True)
+
+        _ca, _cb = st.columns(2)
+        with _ca:
+            if len(fdf) and "college" in fdf.columns:
+                _cc = (fdf.groupby("college")["new_collaborations"]
+                       .sum().reset_index().sort_values("new_collaborations"))
+                _figcol = px.bar(_cc, x="new_collaborations", y="college",
+                                 orientation="h", height=300,
+                                 color_discrete_sequence=[BRAND["sage"]],
+                                 title="New collaborations by college")
+                _figcol.update_layout(xaxis_title="Collaborations", yaxis_title=None,
+                                      template="plotly_white",
+                                      paper_bgcolor="rgba(0,0,0,0)",
+                                      plot_bgcolor="rgba(0,0,0,0)")
+                st.plotly_chart(_figcol, use_container_width=True)
+        with _cb:
+            _pipe = {
+                "Submitted": int(fdf["manuscripts_submitted"].sum()),
+                "Under review": int(fdf["manuscripts_under_review"].sum()),
+                "Accepted": int(fdf["manuscripts_accepted"].sum()),
+                "Published (Scopus)": int(fdf["scopus_faculty"].sum()
+                                          + fdf["scopus_student"].sum()),
+            }
+            _figf = go.Figure(go.Funnel(
+                y=list(_pipe.keys()), x=list(_pipe.values()),
+                marker=dict(color=[BRAND["amber"], BRAND["tan"],
+                                   BRAND["teal"], BRAND["sage"]])))
+            _figf.update_layout(height=300, title="Manuscript pipeline → output",
+                                template="plotly_white",
+                                paper_bgcolor="rgba(0,0,0,0)",
+                                plot_bgcolor="rgba(0,0,0,0)",
+                                margin=dict(t=40, b=10, l=10, r=10))
+            st.plotly_chart(_figf, use_container_width=True)
+
+        st.divider()
+        st.markdown("**Recent CRC reports**")
+        _show = [c for c in ["Period", "college", "crc_name", "grants_applied",
+                             "new_collaborations", "scopus_faculty",
+                             "scopus_student", "students_engaged", "status"]
+                 if c in fdf.columns]
+        _tbl = (fdf.sort_values("period_key", ascending=False)
+                if "period_key" in fdf.columns else fdf)
+        st.dataframe(_tbl[_show] if _show else _tbl,
+                     hide_index=True, use_container_width=True)
+
+
+# ============================================================
 # PAGE: IN-HOUSE GRANT SUBMISSION
 # ============================================================
 elif page == "Submit CRC Monthly Report":
@@ -7233,6 +7378,7 @@ elif page == "Submit CRC Monthly Report":
     # Preflight: warn if the table is missing but still show the form for preview.
     schema_ok = True
     schema_msg = ""
+    has_progress_cols = False
     if sb is None:
         schema_ok = False
         schema_msg = "Database not configured."
@@ -7242,12 +7388,24 @@ elif page == "Submit CRC Monthly Report":
         except Exception as ex:
             schema_ok = False
             schema_msg = f"`crc_monthly_reports` table is missing ({ex})."
+        # Detect the collaboration / Scopus-output columns (added later).
+        try:
+            sb.table("crc_monthly_reports").select("scopus_faculty").limit(1).execute()
+            has_progress_cols = True
+        except Exception:
+            has_progress_cols = False
 
     if not schema_ok:
         st.warning(
             f"⚠️ {schema_msg}\n\n"
             f"The form below is shown for preview. Submissions will fail until "
             f"you run **`add_crc_monthly_reports.sql`** in the Supabase SQL Editor."
+        )
+    elif not has_progress_cols:
+        st.info(
+            "ℹ️ The **collaboration** and **Scopus-output** fields won't be saved "
+            "yet — run **`add_crc_progress_fields.sql`** in the Supabase SQL Editor "
+            "to enable them. The rest of the report still submits normally."
         )
 
     import datetime as _dt
@@ -7286,6 +7444,54 @@ elif page == "Submit CRC Monthly Report":
         with m4:
             n_trainings = st.number_input("Faculty trainings", min_value=0, value=0)
 
+        st.markdown("**💰 Grant applications**")
+        g1, g2 = st.columns([1, 2])
+        with g1:
+            n_grants_applied = st.number_input(
+                "Grants applied", min_value=0, value=0,
+                help="External research grants applied for this month")
+        with g2:
+            grant_details = st.text_input(
+                "Grant details / funding agency",
+                placeholder="e.g., DOST-PCHRD proposal ₱1.2M; CHED grant submitted")
+
+        st.markdown("**🤝 Collaborations** — fostering research partnerships")
+        cc1, cc2 = st.columns([1, 3])
+        with cc1:
+            n_collab = st.number_input(
+                "New collaborations", min_value=0, value=0,
+                help="New research partnerships initiated this month")
+        with cc2:
+            collab_details = st.text_input(
+                "Partners / details",
+                placeholder="e.g., joint study with College of Nursing; "
+                            "MOU with XYZ University (international); "
+                            "industry partner ABC")
+
+        st.markdown("**📈 Scopus output — faculty & students**")
+        s1, s2, s3 = st.columns(3)
+        with s1:
+            scopus_faculty = st.number_input(
+                "Scopus pubs — faculty", min_value=0, value=0,
+                help="Scopus-indexed publications by faculty this month")
+        with s2:
+            scopus_student = st.number_input(
+                "Scopus pubs — students", min_value=0, value=0,
+                help="Scopus-indexed publications involving students")
+        with s3:
+            students_engaged = st.number_input(
+                "Students engaged in research", min_value=0, value=0,
+                help="Students actively involved in research / writing")
+
+        st.caption("Manuscript pipeline — work in progress toward Scopus output")
+        p1, p2, p3 = st.columns(3)
+        with p1:
+            ms_submitted = st.number_input("Manuscripts submitted", min_value=0, value=0)
+        with p2:
+            ms_review = st.number_input("Under review", min_value=0, value=0)
+        with p3:
+            ms_accepted = st.number_input("Accepted (in press)", min_value=0, value=0)
+
         activities = st.text_area("Summary of activities *",
                                   max_chars=2000, height=140,
                                   placeholder="Briefly describe the research activities for the month.")
@@ -7320,6 +7526,19 @@ elif page == "Submit CRC Monthly Report":
                     "doc_filenames": [f.name for f in docs] if docs else [],
                     "status": "Submitted",
                 }
+                if has_progress_cols:
+                    row.update({
+                        "grants_applied": int(n_grants_applied),
+                        "grant_details": grant_details or None,
+                        "new_collaborations": int(n_collab),
+                        "collaboration_details": collab_details or None,
+                        "scopus_faculty": int(scopus_faculty),
+                        "scopus_student": int(scopus_student),
+                        "students_engaged": int(students_engaged),
+                        "manuscripts_submitted": int(ms_submitted),
+                        "manuscripts_under_review": int(ms_review),
+                        "manuscripts_accepted": int(ms_accepted),
+                    })
                 if db_insert("crc_monthly_reports", row):
                     st.success(
                         f"✅ Monthly report for **{college} — {r_month} {int(r_year)}** "
