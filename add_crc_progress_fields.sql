@@ -24,4 +24,5 @@ alter table public.crc_monthly_reports
   add column if not exists manuscripts_under_review  integer not null default 0
         check (manuscripts_under_review >= 0),
   add column if not exists manuscripts_accepted      integer not null default 0
-        check (manuscripts_accepted >= 0);
+        check (manuscripts_accepted >= 0),
+  add column if not exists doc_path                  text;

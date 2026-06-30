@@ -7407,10 +7407,23 @@ elif page == "Submit CRC Monthly Report":
         "Each entry summarises the research activity for one college in one month."
     )
 
+    # Downloadable blank form template.
+    from pathlib import Path as _P
+    _crc_form_path = _P(__file__).parent / "templates" / "CRC_Monthly_Report_Form.docx"
+    if _crc_form_path.exists():
+        st.download_button(
+            "⬇️ Download the CRC Monthly Report Form",
+            data=_crc_form_path.read_bytes(),
+            file_name="CRC Monthly Report Form.docx",
+            mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            help="The official blank form to fill out offline.",
+        )
+
     # Preflight: warn if the table is missing but still show the form for preview.
     schema_ok = True
     schema_msg = ""
     has_progress_cols = False
+    has_doc_path = False
     if sb is None:
         schema_ok = False
         schema_msg = "Database not configured."
@@ -7426,6 +7439,12 @@ elif page == "Submit CRC Monthly Report":
             has_progress_cols = True
         except Exception:
             has_progress_cols = False
+        # Detect the doc_path column (stores the uploaded completed form).
+        try:
+            sb.table("crc_monthly_reports").select("doc_path").limit(1).execute()
+            has_doc_path = True
+        except Exception:
+            has_doc_path = False
 
     if not schema_ok:
         st.warning(
@@ -7534,13 +7553,37 @@ elif page == "Submit CRC Monthly Report":
         next_plans = st.text_area("Plans for next month",
                                   max_chars=1000, height=90)
 
-        docs = st.file_uploader("Attachments (optional)", accept_multiple_files=True)
+        st.markdown("**📤 Upload completed form** (optional)")
+        completed_form = st.file_uploader(
+            "Attach your filled-out CRC Monthly Report Form",
+            type=["docx", "doc", "pdf"], accept_multiple_files=False,
+            help="Upload the completed Word/PDF form — it's stored with this report.")
         submitted = st.form_submit_button("Submit Monthly Report", type="primary")
 
         if submitted:
             if not all([r_month, college, crc_name, crc_email, activities]):
                 st.error("Please complete all required fields (marked *).")
             else:
+                # Store the completed form in Supabase Storage (best-effort).
+                crc_doc_path = None
+                if completed_form is not None and sb is not None:
+                    try:
+                        import mimetypes as _mt
+                        _ts = datetime.now().strftime("%Y%m%dT%H%M%S")
+                        crc_doc_path = (f"crc-reports/{int(r_year)}-"
+                                        f"{_months.index(r_month):02d}_{college}_"
+                                        f"{_ts}_{completed_form.name}")
+                        _ctype = (completed_form.type
+                                  or _mt.guess_type(completed_form.name)[0]
+                                  or "application/octet-stream")
+                        sb.storage.from_("grant-reports").upload(
+                            crc_doc_path, completed_form.getvalue(),
+                            {"content-type": _ctype,
+                             "content-disposition": "inline"})
+                    except Exception as e:
+                        crc_doc_path = None
+                        st.warning(f"Form upload failed: {e}. Report still saved.")
+
                 row = {
                     "reporting_month": _months.index(r_month),
                     "reporting_year": int(r_year),
@@ -7555,9 +7598,11 @@ elif page == "Submit CRC Monthly Report":
                     "accomplishments": accomplishments,
                     "challenges": challenges,
                     "next_month_plans": next_plans,
-                    "doc_filenames": [f.name for f in docs] if docs else [],
+                    "doc_filenames": [completed_form.name] if completed_form else [],
                     "status": "Submitted",
                 }
+                if has_doc_path and crc_doc_path:
+                    row["doc_path"] = crc_doc_path
                 if has_progress_cols:
                     row.update({
                         "grants_applied": int(n_grants_applied),
@@ -7576,6 +7621,62 @@ elif page == "Submit CRC Monthly Report":
                         f"✅ Monthly report for **{college} — {r_month} {int(r_year)}** "
                         f"submitted. IRO notified."
                     )
+
+    # ----- Summary: achievements per report over the months -----
+    st.divider()
+    st.markdown("### 📋 Submitted reports & achievements")
+    st.caption("Achievements logged per report — most recent first.")
+    _MONTHS_FULL = ["", "January", "February", "March", "April", "May", "June",
+                    "July", "August", "September", "October", "November", "December"]
+    _reports = db_select("crc_monthly_reports", order_col="submitted_at",
+                         desc=True) or []
+    if not _reports:
+        st.info("No reports submitted yet.")
+    else:
+        _scols = sorted({r.get("college") for r in _reports if r.get("college")})
+        _sfilter = st.multiselect("Filter by college", _scols, default=[],
+                                  key="crc_summary_college")
+        _shown = 0
+        for _rep in _reports:
+            if _sfilter and _rep.get("college") not in _sfilter:
+                continue
+            _shown += 1
+            try:
+                _mn = int(_rep.get("reporting_month") or 0)
+                _per = (f"{_MONTHS_FULL[_mn] if 1 <= _mn <= 12 else '?'} "
+                        f"{int(_rep.get('reporting_year') or 0)}")
+            except Exception:
+                _per = "?"
+            with st.expander(f"📅 {_per} — {_rep.get('college', '?')} · "
+                             f"{_rep.get('crc_name', '?')}"):
+                _mc = st.columns(4)
+                _mc[0].metric("Scopus (fac/stu)",
+                              f"{_rep.get('scopus_faculty') or 0}/"
+                              f"{_rep.get('scopus_student') or 0}")
+                _mc[1].metric("Grants applied", _rep.get("grants_applied") or 0)
+                _mc[2].metric("Collaborations", _rep.get("new_collaborations") or 0)
+                _mc[3].metric("Students engaged", _rep.get("students_engaged") or 0)
+                if _rep.get("accomplishments"):
+                    st.markdown("**🏆 Accomplishments**")
+                    st.write(_rep["accomplishments"])
+                if _rep.get("activities_summary"):
+                    st.markdown("**Activities**")
+                    st.write(_rep["activities_summary"])
+                if _rep.get("collaboration_details"):
+                    st.markdown(f"**🤝 Collaborations:** {_rep['collaboration_details']}")
+                _dp = _rep.get("doc_path")
+                if _dp and sb is not None:
+                    try:
+                        _r = sb.storage.from_("grant-reports").create_signed_url(_dp, 3600)
+                        _url = _r.get("signedURL") or _r.get("signed_url") or ""
+                    except Exception:
+                        _url = ""
+                    if _url:
+                        st.link_button("📥 Download submitted form", _url)
+                st.caption("Submitted "
+                           + str(_rep.get("submitted_at", ""))[:19].replace("T", " "))
+        if _sfilter and _shown == 0:
+            st.info("No reports for the selected college(s).")
 
 
 elif page == "In-House Grant Submission":
