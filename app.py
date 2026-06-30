@@ -1102,9 +1102,8 @@ ALL_PAGES_BY_ROLE = {
     "📰 In-House Journal Publications": ["admin", "standard", "crc"],
     "📜 IRO Policies": ["admin", "standard", "crc"],
     # ----- Submit group — admin, standard, CRC -----
-    "📄 Project Reports (download / upload)": ["admin", "standard", "crc"],
     "📋 Submit CRC Monthly Report": ["admin", "standard", "crc"],
-    "➕ In-House Grant Submission": ["admin", "standard", "crc"],
+    "🧾 In-house grants": ["admin", "standard", "crc"],
     "➕ External Grant Submission": ["admin", "standard", "crc"],
     "➕ Submit Scholarly Engagement": ["admin", "standard", "crc"],
     # ----- Admin group — admin + standard (NOT CRC) -----
@@ -1132,8 +1131,7 @@ PAGE_GROUPS = {
     ],
     "Submit": [
         "📋 Submit CRC Monthly Report",
-        "📄 Project Reports (download / upload)",
-        "➕ In-House Grant Submission",
+        "🧾 In-house grants",
         "➕ External Grant Submission",
         "➕ Submit Scholarly Engagement",
     ],
@@ -5995,156 +5993,6 @@ elif page == "IRO Presentations & Reports":
 
 
 # ============================================================
-# PAGE: PROJECT REPORTS — DOWNLOAD TEMPLATES + UPLOAD COMPLETED
-# ============================================================
-elif page == "Project Reports (download / upload)":
-    st.markdown('<div class="section-heading">In-House Grant Reports — Download &amp; Upload</div>',
-                unsafe_allow_html=True)
-
-    # ---------- DOWNLOAD ----------
-    st.markdown("### 📥 Download Templates")
-    st.caption(
-        "PIs of awarded in-house grants are required to submit a mid-project and a "
-        "final report using the templates below."
-    )
-
-    from pathlib import Path as _P
-
-    dl_col1, dl_col2 = st.columns(2)
-    mid_path = _P("templates/MCU_Mid_Project_Report_Template.docx")
-    fin_path = _P("templates/MCU_Final_Project_Report_Template.docx")
-
-    with dl_col1:
-        st.markdown("**📝 Mid-Project Report**")
-        st.caption("Submit at the project mid-point.")
-        if mid_path.exists():
-            st.download_button(
-                "⬇️ Download Mid-Project Template",
-                data=mid_path.read_bytes(),
-                file_name="MCU_Mid_Project_Report_Template.docx",
-                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                type="primary",
-                use_container_width=True,
-            )
-        else:
-            st.error("Template missing. Run `python3 build_templates.py` first.")
-
-    with dl_col2:
-        st.markdown("**📑 Final Project Report**")
-        st.caption("Submit within 30 days of project end.")
-        if fin_path.exists():
-            st.download_button(
-                "⬇️ Download Final Report Template",
-                data=fin_path.read_bytes(),
-                file_name="MCU_Final_Project_Report_Template.docx",
-                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                type="primary",
-                use_container_width=True,
-            )
-        else:
-            st.error("Template missing.")
-
-    st.divider()
-
-    # ---------- UPLOAD ----------
-    st.markdown("### 📤 Upload Completed Report")
-    st.caption(
-        "After filling in the template, upload the completed Word file here. "
-        "The IRO Secretariat will be notified."
-    )
-
-    with st.form("report_upload_form", clear_on_submit=True):
-        grants_list = db_select("grant_projects") if sb else []
-        grant_options = [""] + [
-            f"{g.get('project_id')} — {g.get('pi','?')} — {(g.get('title') or '')[:60]}"
-            for g in grants_list
-        ]
-        u_c1, u_c2 = st.columns([2, 1])
-        with u_c1:
-            grant_pick = st.selectbox("Grant *", grant_options)
-        with u_c2:
-            report_type = st.selectbox("Report Type *",
-                                       ["", "Mid-Project", "Final"])
-
-        pi = st.text_input("Your Name (Principal Investigator) *",
-                           placeholder="e.g., Dr. Charmaine Ng")
-        notes = st.text_area("Cover Note (optional)",
-                             placeholder="Any context for the IRO Secretariat...",
-                             max_chars=500, height=80)
-
-        uploaded_file = st.file_uploader("Upload Completed Report *",
-                                         type=["docx", "pdf"],
-                                         help="Use the template downloaded above")
-
-        submitted = st.form_submit_button("📤 Submit Report", type="primary")
-
-        if submitted:
-            if not (grant_pick and report_type and pi and uploaded_file):
-                st.error("Please fill in all required fields and attach a file.")
-            else:
-                # Extract grant ID from the dropdown choice
-                grant_id = grant_pick.split(" — ", 1)[0]
-                fname = uploaded_file.name
-                ts = datetime.now().strftime("%Y%m%dT%H%M%S")
-                storage_path = f"{grant_id}/{report_type.lower()}/{ts}_{fname}"
-
-                file_bytes = uploaded_file.getvalue()
-                upload_ok = False
-
-                # Try Supabase Storage; fall back to metadata-only
-                if sb is not None:
-                    try:
-                        sb.storage.from_("grant-reports").upload(
-                            storage_path, file_bytes,
-                            {"content-type": uploaded_file.type or "application/octet-stream"},
-                        )
-                        upload_ok = True
-                    except Exception as e:
-                        st.warning(
-                            f"⚠️ File metadata saved but binary upload to Storage failed: {e}. "
-                            "Did you create the `grant-reports` bucket via the SQL?"
-                        )
-
-                # Always log the upload metadata
-                if sb is not None:
-                    sb.table("grant_report_uploads").insert({
-                        "grant_id": grant_id,
-                        "pi": pi,
-                        "report_type": report_type,
-                        "filename": fname,
-                        "storage_path": storage_path,
-                        "notes": notes or None,
-                    }).execute()
-
-                if upload_ok:
-                    st.success(
-                        f"✅ Report uploaded for **{grant_id}** ({report_type}). "
-                        "The IRO Secretariat has been notified."
-                    )
-                    st.balloons()
-                else:
-                    st.info(
-                        f"📋 Metadata logged for **{grant_id}** ({report_type}). "
-                        "Run the storage-bucket SQL to enable actual file uploads."
-                    )
-
-    st.divider()
-
-    # ---------- LIST UPLOADED REPORTS ----------
-    st.markdown("### 📂 Submitted Reports")
-    uploads = db_select("grant_report_uploads", order_col="uploaded_at") if sb else []
-    if uploads:
-        df = pd.DataFrame(uploads)
-        display_cols = [c for c in
-                        ["uploaded_at", "grant_id", "pi", "report_type",
-                         "filename", "notes"] if c in df.columns]
-        st.dataframe(df[display_cols] if display_cols else df,
-                     hide_index=True, use_container_width=True)
-    else:
-        st.info("No reports uploaded yet.")
-
-
-# ============================================================
 # PAGE: BUDGET UTILISATION (ADMIN ONLY)
 # ============================================================
 elif page == "Budget Utilisation":
@@ -7545,55 +7393,57 @@ elif page == "Submit CRC Monthly Report":
             st.info("No reports for the selected college(s).")
 
 
-elif page == "In-House Grant Submission":
-    st.markdown('<div class="section-heading">In-House Grant Submission</div>', unsafe_allow_html=True)
+# ============================================================
+# PAGE: IN-HOUSE GRANTS — downloadable forms
+# ============================================================
+elif page == "In-house grants":
+    require_roles("In-house grants", ["admin", "standard", "crc"])
+    st.markdown('<div class="section-heading">In-House Research Grants — Forms</div>',
+                unsafe_allow_html=True)
+    st.caption("Download the in-house research grant forms below, complete them, "
+               "and submit per IRO guidelines.")
 
-    next_n = 38 + db_count("grant_projects") + 1
-    next_id = f"MCU-IHG-2026-{next_n:04d}"
-    st.info(f"Next Project ID: **{next_id}**")
-
-    with st.form("grant_form", clear_on_submit=True):
-        title = st.text_input("Project Title *", max_chars=200)
-        c1, c2 = st.columns(2)
-        with c1:
-            pi = st.text_input("Principal Investigator *")
-            college = st.selectbox("College / Department *",
-                                   ["", "Medicine", "Nursing", "Med Tech", "Pharmacy",
-                                    "Dentistry", "Optometry", "Physical Therapy",
-                                    "Business and Management", "Others"])
-            duration = st.number_input("Duration (months) *", min_value=3, max_value=36, value=12)
-        with c2:
-            email = st.text_input("PI Email *")
-            track = st.selectbox("Research Track *",
-                                 ["", "Basic Research", "Applied Research", "Translational",
-                                  "Health Systems", "Education & Pedagogy"])
-            budget = st.number_input("Requested Budget (₱) *", min_value=0, value=0, step=1000)
-
-        team = st.text_input("Co-Investigators / Team", placeholder="Names separated by commas")
-        outputs = st.text_input("Expected Outputs",
-                                placeholder="e.g., 1 Scopus (Q2), 1 policy brief")
-        abstract = st.text_area("Abstract & Objectives *", max_chars=1500, height=140)
-
-        aligned = st.checkbox("This project aligns with the MCU Research Agenda priority areas")
-
-        docs = st.file_uploader("Attachments", accept_multiple_files=True)
-        submitted = st.form_submit_button("Submit Proposal", type="primary")
-
-        if submitted:
-            if not all([title, pi, email, college, track, abstract]):
-                st.error("Please complete required fields.")
+    from pathlib import Path as _P
+    _tdir = _P(__file__).parent / "templates"
+    _DOCX_MIME = ("application/vnd.openxmlformats-officedocument."
+                  "wordprocessingml.document")
+    _grant_forms = [
+        ("In-house Research Grant — Application Form",
+         "IH_Grant_Application_Form.docx",
+         "In-house Research Grant - Application Form.docx",
+         "Apply for an in-house research grant."),
+        ("Acceptance, Recommendation & Endorsement",
+         "IH_Grant_Acceptance_Recommendation_Endorsement.docx",
+         "In-house Research Grant - Acceptance, Recommendation, Endorsement.docx",
+         "Acceptance / recommendation / endorsement of the awarded grant."),
+        ("Memorandum of Agreement",
+         "IH_Grant_Memorandum_of_Agreement.docx",
+         "In-house Research Grant - Memorandum of Agreement.docx",
+         "MOA between the grantee and MCU-IRO."),
+        ("Waiver on the Disbursement of IRO Research Fund",
+         "IH_Grant_Waiver_Disbursement.docx",
+         "In-house Research Grant - Waiver on Disbursement of MCU-IRO Funds.docx",
+         "Waiver on the disbursement and use of MCU-IRO funds."),
+        ("In-house Research Grant — Progress Report",
+         "IH_Grant_Progress_Report.docx",
+         "In-house Research Grant - Progress Report.docx",
+         "Periodic progress report for the funded project."),
+    ]
+    for _i, (_label, _fname, _dlname, _desc) in enumerate(_grant_forms, start=1):
+        _fp = _tdir / _fname
+        _c1, _c2 = st.columns([3, 1])
+        with _c1:
+            st.markdown(f"**{_i}. 📄 {_label}**")
+            st.caption(_desc)
+        with _c2:
+            if _fp.exists():
+                st.download_button(
+                    "⬇️ Download", data=_fp.read_bytes(),
+                    file_name=_dlname, mime=_DOCX_MIME,
+                    key=f"dl_ihg_{_i}", use_container_width=True)
             else:
-                row = {
-                    "project_id": next_id,
-                    "title": title, "pi": pi, "email": email, "college": college,
-                    "track": track, "duration": duration, "budget": budget,
-                    "team": team, "outputs": outputs, "abstract": abstract,
-                    "aligned_with_agenda": aligned,
-                    "doc_filenames": [f.name for f in docs] if docs else [],
-                    "status": "Submitted",
-                }
-                if db_insert("grant_projects", row):
-                    st.success(f"✅ Project **{next_id}** submitted — Research Office notified.")
+                st.caption("⚠️ Not yet available")
+        st.divider()
 
 
 # ============================================================
