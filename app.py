@@ -7431,18 +7431,14 @@ elif page == "In-house grants":
     ]
     for _i, (_label, _fname, _dlname, _desc) in enumerate(_grant_forms, start=1):
         _fp = _tdir / _fname
-        _c1, _c2 = st.columns([3, 1])
-        with _c1:
-            st.markdown(f"**{_i}. 📄 {_label}**")
-            st.caption(_desc)
-        with _c2:
-            if _fp.exists():
-                st.download_button(
-                    "⬇️ Download", data=_fp.read_bytes(),
-                    file_name=_dlname, mime=_DOCX_MIME,
-                    key=f"dl_ihg_{_i}", use_container_width=True)
-            else:
-                st.caption("⚠️ Not yet available")
+        st.markdown(f"**{_i}. 📄 {_label}**")
+        st.caption(_desc)
+        if _fp.exists():
+            st.download_button(
+                "⬇️ Download", data=_fp.read_bytes(),
+                file_name=_dlname, mime=_DOCX_MIME, key=f"dl_ihg_{_i}")
+        else:
+            st.caption("⚠️ Not yet available")
         st.divider()
 
 
