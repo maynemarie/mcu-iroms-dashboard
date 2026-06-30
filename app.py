@@ -3660,6 +3660,38 @@ elif page == "Manage Scopus Publications":
                                         for f, c in diff.items():
                                             st.text(f"• {f}: {c['old']} → {c['new']}")
 
+                # ----- Remove (delete) this publication -----
+                st.divider()
+                with st.expander("🗑️ Remove this publication"):
+                    st.warning(
+                        "This permanently deletes the article and its edit "
+                        "history. It cannot be undone.")
+                    st.caption(
+                        f"**[{current.get('year')}] "
+                        f"{current.get('lead_author', '?')} — "
+                        f"{(current.get('title') or '')[:80]}**")
+                    confirm_del = st.checkbox(
+                        "Yes, permanently delete this publication",
+                        key=f"scopus_del_confirm_{current['id']}")
+                    if st.button("🗑️ Delete publication", type="primary",
+                                 disabled=not confirm_del,
+                                 key=f"scopus_del_btn_{current['id']}"):
+                        try:
+                            if sb is not None:
+                                # Remove audit rows first (in case the FK isn't
+                                # set to cascade), then the publication itself.
+                                try:
+                                    sb.table("scopus_audit_log").delete() \
+                                        .eq("publication_id", current["id"]).execute()
+                                except Exception:
+                                    pass
+                                sb.table("scopus_publications").delete() \
+                                    .eq("id", current["id"]).execute()
+                            st.success("✅ Publication deleted.")
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"❌ Could not delete: {e}")
+
 
 # ============================================================
 # PAGE: IN-HOUSE GRANTS (VIEW)
