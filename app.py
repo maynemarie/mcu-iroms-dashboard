@@ -7452,11 +7452,11 @@ elif page == "Submit CRC Monthly Report":
             f"The form below is shown for preview. Submissions will fail until "
             f"you run **`add_crc_monthly_reports.sql`** in the Supabase SQL Editor."
         )
-    elif not has_progress_cols:
+    elif not has_doc_path:
         st.info(
-            "ℹ️ The **collaboration** and **Scopus-output** fields won't be saved "
-            "yet — run **`add_crc_progress_fields.sql`** in the Supabase SQL Editor "
-            "to enable them. The rest of the report still submits normally."
+            "ℹ️ Uploaded forms won't be stored yet — run "
+            "**`add_crc_progress_fields.sql`** (adds the `doc_path` column) in the "
+            "Supabase SQL Editor. The report still submits."
         )
 
     import datetime as _dt
@@ -7467,8 +7467,7 @@ elif page == "Submit CRC Monthly Report":
     with st.form("crc_monthly_form", clear_on_submit=True):
         c1, c2, c3 = st.columns(3)
         with c1:
-            r_month = st.selectbox("Reporting Month *", _months,
-                                   index=_today.month)
+            r_month = st.selectbox("Reporting Month *", _months, index=_today.month)
         with c2:
             r_year = st.number_input("Reporting Year *", min_value=2024,
                                      max_value=2035, value=_today.year, step=1)
@@ -7477,96 +7476,28 @@ elif page == "Submit CRC Monthly Report":
                                    ["", "Medicine", "Nursing", "Med Tech", "Pharmacy",
                                     "Dentistry", "Optometry", "Physical Therapy",
                                     "Business and Management", "Others"])
-
         c4, c5 = st.columns(2)
         with c4:
             crc_name = st.text_input("CRC Name *", placeholder="Submitting coordinator")
         with c5:
             crc_email = st.text_input("CRC Email *")
 
-        st.markdown("**Monthly activity counts**")
-        m1, m2, m3, m4 = st.columns(4)
-        with m1:
-            n_grants = st.number_input("New grants submitted", min_value=0, value=0)
-        with m2:
-            n_pubs = st.number_input("Publications", min_value=0, value=0)
-        with m3:
-            n_workshops = st.number_input("Workshops conducted", min_value=0, value=0)
-        with m4:
-            n_trainings = st.number_input("Faculty trainings", min_value=0, value=0)
-
-        st.markdown("**💰 Grant applications**")
-        g1, g2 = st.columns([1, 2])
-        with g1:
-            n_grants_applied = st.number_input(
-                "Grants applied", min_value=0, value=0,
-                help="External research grants applied for this month")
-        with g2:
-            grant_details = st.text_input(
-                "Grant details / funding agency",
-                placeholder="e.g., DOST-PCHRD proposal ₱1.2M; CHED grant submitted")
-
-        st.markdown("**🤝 Collaborations** — fostering research partnerships")
-        cc1, cc2 = st.columns([1, 3])
-        with cc1:
-            n_collab = st.number_input(
-                "New collaborations", min_value=0, value=0,
-                help="New research partnerships initiated this month")
-        with cc2:
-            collab_details = st.text_input(
-                "Partners / details",
-                placeholder="e.g., joint study with College of Nursing; "
-                            "MOU with XYZ University (international); "
-                            "industry partner ABC")
-
-        st.markdown("**📈 Scopus output — faculty & students**")
-        s1, s2, s3 = st.columns(3)
-        with s1:
-            scopus_faculty = st.number_input(
-                "Scopus pubs — faculty", min_value=0, value=0,
-                help="Scopus-indexed publications by faculty this month")
-        with s2:
-            scopus_student = st.number_input(
-                "Scopus pubs — students", min_value=0, value=0,
-                help="Scopus-indexed publications involving students")
-        with s3:
-            students_engaged = st.number_input(
-                "Students engaged in research", min_value=0, value=0,
-                help="Students actively involved in research / writing")
-
-        st.caption("Manuscript pipeline — work in progress toward Scopus output")
-        p1, p2, p3 = st.columns(3)
-        with p1:
-            ms_submitted = st.number_input("Manuscripts submitted", min_value=0, value=0)
-        with p2:
-            ms_review = st.number_input("Under review", min_value=0, value=0)
-        with p3:
-            ms_accepted = st.number_input("Accepted (in press)", min_value=0, value=0)
-
-        activities = st.text_area("Summary of activities *",
-                                  max_chars=2000, height=140,
-                                  placeholder="Briefly describe the research activities for the month.")
-        accomplishments = st.text_area("Notable accomplishments",
-                                       max_chars=1000, height=90)
-        challenges = st.text_area("Challenges encountered",
-                                  max_chars=1000, height=90)
-        next_plans = st.text_area("Plans for next month",
-                                  max_chars=1000, height=90)
-
-        st.markdown("**📤 Upload completed form** (optional)")
+        st.markdown("**📤 Upload completed form ***")
         completed_form = st.file_uploader(
             "Attach your filled-out CRC Monthly Report Form",
             type=["docx", "doc", "pdf"], accept_multiple_files=False,
-            help="Upload the completed Word/PDF form — it's stored with this report.")
-        submitted = st.form_submit_button("Submit Monthly Report", type="primary")
+            help="Download the form above, fill it out, then upload it here.")
 
+        submitted = st.form_submit_button("Submit Report", type="primary")
         if submitted:
-            if not all([r_month, college, crc_name, crc_email, activities]):
-                st.error("Please complete all required fields (marked *).")
+            if (not all([r_month, college, crc_name, crc_email])
+                    or completed_form is None):
+                st.error("Complete the period / college / name and attach your "
+                         "completed form.")
             else:
                 # Store the completed form in Supabase Storage (best-effort).
                 crc_doc_path = None
-                if completed_form is not None and sb is not None:
+                if sb is not None:
                     try:
                         import mimetypes as _mt
                         _ts = datetime.now().strftime("%Y%m%dT%H%M%S")
@@ -7582,7 +7513,7 @@ elif page == "Submit CRC Monthly Report":
                              "content-disposition": "inline"})
                     except Exception as e:
                         crc_doc_path = None
-                        st.warning(f"Form upload failed: {e}. Report still saved.")
+                        st.warning(f"Form upload failed: {e}. Submission still recorded.")
 
                 row = {
                     "reporting_month": _months.index(r_month),
@@ -7590,42 +7521,22 @@ elif page == "Submit CRC Monthly Report":
                     "college": college,
                     "crc_name": crc_name,
                     "crc_email": crc_email,
-                    "new_grants_count": int(n_grants),
-                    "publications_count": int(n_pubs),
-                    "workshops_count": int(n_workshops),
-                    "trainings_count": int(n_trainings),
-                    "activities_summary": activities,
-                    "accomplishments": accomplishments,
-                    "challenges": challenges,
-                    "next_month_plans": next_plans,
-                    "doc_filenames": [completed_form.name] if completed_form else [],
+                    "activities_summary": "See uploaded completed form.",
+                    "doc_filenames": [completed_form.name],
                     "status": "Submitted",
                 }
                 if has_doc_path and crc_doc_path:
                     row["doc_path"] = crc_doc_path
-                if has_progress_cols:
-                    row.update({
-                        "grants_applied": int(n_grants_applied),
-                        "grant_details": grant_details or None,
-                        "new_collaborations": int(n_collab),
-                        "collaboration_details": collab_details or None,
-                        "scopus_faculty": int(scopus_faculty),
-                        "scopus_student": int(scopus_student),
-                        "students_engaged": int(students_engaged),
-                        "manuscripts_submitted": int(ms_submitted),
-                        "manuscripts_under_review": int(ms_review),
-                        "manuscripts_accepted": int(ms_accepted),
-                    })
                 if db_insert("crc_monthly_reports", row):
                     st.success(
-                        f"✅ Monthly report for **{college} — {r_month} {int(r_year)}** "
-                        f"submitted. IRO notified."
-                    )
+                        f"✅ Report for **{college} — {r_month} {int(r_year)}** "
+                        f"submitted.")
 
-    # ----- Summary: achievements per report over the months -----
+    # ----- Summary of submitted reports & achievements -----
     st.divider()
-    st.markdown("### 📋 Submitted reports & achievements")
-    st.caption("Achievements logged per report — most recent first.")
+    st.markdown("### 📋 Summary of submitted reports & achievements")
+    st.caption("Submitted CRC reports — most recent first. Open one to download "
+               "the completed form.")
     _MONTHS_FULL = ["", "January", "February", "March", "April", "May", "June",
                     "July", "August", "September", "October", "November", "December"]
     _reports = db_select("crc_monthly_reports", order_col="submitted_at",
@@ -7649,32 +7560,23 @@ elif page == "Submit CRC Monthly Report":
                 _per = "?"
             with st.expander(f"📅 {_per} — {_rep.get('college', '?')} · "
                              f"{_rep.get('crc_name', '?')}"):
-                _mc = st.columns(4)
-                _mc[0].metric("Scopus (fac/stu)",
-                              f"{_rep.get('scopus_faculty') or 0}/"
-                              f"{_rep.get('scopus_student') or 0}")
-                _mc[1].metric("Grants applied", _rep.get("grants_applied") or 0)
-                _mc[2].metric("Collaborations", _rep.get("new_collaborations") or 0)
-                _mc[3].metric("Students engaged", _rep.get("students_engaged") or 0)
-                if _rep.get("accomplishments"):
-                    st.markdown("**🏆 Accomplishments**")
-                    st.write(_rep["accomplishments"])
-                if _rep.get("activities_summary"):
-                    st.markdown("**Activities**")
-                    st.write(_rep["activities_summary"])
-                if _rep.get("collaboration_details"):
-                    st.markdown(f"**🤝 Collaborations:** {_rep['collaboration_details']}")
                 _dp = _rep.get("doc_path")
+                _url = ""
                 if _dp and sb is not None:
                     try:
                         _r = sb.storage.from_("grant-reports").create_signed_url(_dp, 3600)
                         _url = _r.get("signedURL") or _r.get("signed_url") or ""
                     except Exception:
                         _url = ""
-                    if _url:
-                        st.link_button("📥 Download submitted form", _url)
+                if _url:
+                    st.link_button("📥 Download completed form", _url)
+                else:
+                    _fn = _rep.get("doc_filenames") or []
+                    st.caption(f"Attached: {', '.join(_fn)}" if _fn
+                               else "No form attached.")
                 st.caption("Submitted "
-                           + str(_rep.get("submitted_at", ""))[:19].replace("T", " "))
+                           + str(_rep.get("submitted_at", ""))[:19].replace("T", " ")
+                           + (f" · {_rep.get('crc_email')}" if _rep.get("crc_email") else ""))
         if _sfilter and _shown == 0:
             st.info("No reports for the selected college(s).")
 
