@@ -1090,7 +1090,7 @@ render_mcu_banner(logout=True)
 ALL_PAGES_BY_ROLE = {
     # ----- Dashboard group — admin, standard, CRC -----
     "📊 Overview": ["admin", "standard", "crc"],
-    "📈 CRC Progress": ["admin", "standard", "crc"],
+    "📋 CRC Reports": ["admin", "standard", "crc"],
     "🌐 Research Ecosystem": ["admin", "standard", "crc"],
     "📅 Calendar of Events": ["admin", "standard", "crc"],
     # ----- Data group — admin, standard, CRC -----
@@ -1119,7 +1119,7 @@ ALL_PAGES_BY_ROLE = {
 
 # Group pages into categories for the 2-level menu
 PAGE_GROUPS = {
-    "Dashboard": ["📊 Overview", "📈 CRC Progress", "🌐 Research Ecosystem", "📅 Calendar of Events"],
+    "Dashboard": ["📊 Overview", "🌐 Research Ecosystem", "📋 CRC Reports", "📅 Calendar of Events"],
     "Data": [
         "📚 Scopus Publications (view)",
         "💰 In-House Grants (view)",
@@ -7253,32 +7253,21 @@ elif page == "User Management":
 
 
 # ============================================================
-# PAGE: CRC PROGRESS — research goals tracker
+# PAGE: CRC REPORTS — submission tracker
 # ============================================================
-elif page == "CRC Progress":
-    require_roles("CRC Progress", ["admin", "standard", "crc"])
-    st.markdown('<div class="section-heading">CRC Progress — Research Goals Tracker</div>',
+elif page == "CRC Reports":
+    require_roles("CRC Reports", ["admin", "standard", "crc"])
+    st.markdown('<div class="section-heading">CRC Reports — Submission Tracker</div>',
                 unsafe_allow_html=True)
-    st.caption("Monthly progress from College Research Coordinators — collaborations, "
-               "grant applications, and Scopus output from faculty and students.")
+    st.caption("Monthly reports submitted by College Research Coordinators — "
+               "who submitted, when, and whether a completed form was uploaded.")
 
     _crc_rows = db_select("crc_monthly_reports", order_col="submitted_at",
                           desc=True) or []
     if not _crc_rows:
-        st.info("No CRC monthly reports submitted yet.")
+        st.info("No CRC reports submitted yet.")
     else:
         cdf = pd.DataFrame(_crc_rows)
-        # Make sure every metric column exists (graceful if migration not yet run).
-        _metric_cols = ["scopus_faculty", "scopus_student", "grants_applied",
-                        "new_collaborations", "students_engaged",
-                        "manuscripts_submitted", "manuscripts_under_review",
-                        "manuscripts_accepted", "new_grants_count",
-                        "publications_count", "workshops_count", "trainings_count"]
-        for _c in _metric_cols:
-            if _c not in cdf.columns:
-                cdf[_c] = 0
-            cdf[_c] = pd.to_numeric(cdf[_c], errors="coerce").fillna(0).astype(int)
-
         _MONTHS_AB = ["", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul",
                       "Aug", "Sep", "Oct", "Nov", "Dec"]
         if "reporting_month" in cdf and "reporting_year" in cdf:
@@ -7290,6 +7279,9 @@ elif page == "CRC Progress":
                 lambda r: f"{_MONTHS_AB[r['reporting_month']] if 1 <= r['reporting_month'] <= 12 else '?'} "
                           f"{r['reporting_year']}", axis=1)
             cdf["period_key"] = cdf["reporting_year"] * 100 + cdf["reporting_month"]
+        if "submitted_at" in cdf.columns:
+            cdf["submitted_at"] = pd.to_datetime(cdf["submitted_at"], errors="coerce")
+        cdf["Form"] = (cdf["doc_path"].notna() if "doc_path" in cdf.columns else False)
 
         # ----- Filters -----
         _fc1, _fc2 = st.columns(2)
@@ -7308,92 +7300,64 @@ elif page == "CRC Progress":
             fdf = fdf[fdf["college"].isin(_college_sel)]
 
         # ----- KPIs -----
-        k1, k2, k3, k4, k5 = st.columns(5)
-        k1.metric("Scopus — Faculty", int(fdf["scopus_faculty"].sum()))
-        k2.metric("Scopus — Students", int(fdf["scopus_student"].sum()))
-        k3.metric("Grants Applied", int(fdf["grants_applied"].sum()))
-        k4.metric("New Collaborations", int(fdf["new_collaborations"].sum()))
-        k5.metric("Students Engaged", int(fdf["students_engaged"].sum()))
+        import datetime as _dt2
+        _this_year = _dt2.date.today().year
+        k1, k2, k3, k4 = st.columns(4)
+        k1.metric("Reports submitted", len(fdf))
+        k2.metric("Colleges reporting",
+                  int(fdf["college"].nunique()) if "college" in fdf else 0)
+        k3.metric(f"This year ({_this_year})",
+                  int((fdf["reporting_year"] == _this_year).sum())
+                  if "reporting_year" in fdf else 0)
+        k4.metric("With uploaded form", int(fdf["Form"].sum()))
 
         st.divider()
-
-        if len(fdf) and "college" in fdf.columns:
-            # Scopus output by college — faculty vs students
-            _byc = (fdf.groupby("college")[["scopus_faculty", "scopus_student"]]
-                    .sum().reset_index())
-            _mlt = _byc.melt(id_vars="college",
-                             value_vars=["scopus_faculty", "scopus_student"],
-                             var_name="Type", value_name="Count")
-            _mlt["Type"] = _mlt["Type"].map({"scopus_faculty": "Faculty",
-                                             "scopus_student": "Students"})
-            _figc = px.bar(_mlt, x="college", y="Count", color="Type",
-                           barmode="group", height=340,
-                           color_discrete_map={"Faculty": BRAND["slate"],
-                                               "Students": BRAND["tan"]},
-                           title="Scopus output by college — faculty vs students")
-            _figc.update_layout(xaxis_title=None, yaxis_title="Publications",
-                                template="plotly_white",
-                                paper_bgcolor="rgba(0,0,0,0)",
-                                plot_bgcolor="rgba(0,0,0,0)")
-            st.plotly_chart(_figc, use_container_width=True)
-
-        if len(fdf) and "period_key" in fdf.columns:
-            _tr = (fdf.groupby(["period_key", "Period"])
-                   [["scopus_faculty", "scopus_student"]].sum()
-                   .reset_index().sort_values("period_key"))
-            _tr["Total Scopus"] = _tr["scopus_faculty"] + _tr["scopus_student"]
-            _figt = px.line(_tr, x="Period", y="Total Scopus", markers=True,
-                            height=300, title="Scopus output trend")
-            _figt.update_traces(line=dict(color=BRAND["plum"], width=3),
-                                marker=dict(size=9, color=BRAND["plum"]))
-            _figt.update_layout(xaxis_title=None, template="plotly_white",
-                                paper_bgcolor="rgba(0,0,0,0)",
-                                plot_bgcolor="rgba(0,0,0,0)")
-            st.plotly_chart(_figt, use_container_width=True)
 
         _ca, _cb = st.columns(2)
         with _ca:
             if len(fdf) and "college" in fdf.columns:
-                _cc = (fdf.groupby("college")["new_collaborations"]
-                       .sum().reset_index().sort_values("new_collaborations"))
-                _figcol = px.bar(_cc, x="new_collaborations", y="college",
-                                 orientation="h", height=300,
-                                 color_discrete_sequence=[BRAND["sage"]],
-                                 title="New collaborations by college")
-                _figcol.update_layout(xaxis_title="Collaborations", yaxis_title=None,
-                                      template="plotly_white",
-                                      paper_bgcolor="rgba(0,0,0,0)",
-                                      plot_bgcolor="rgba(0,0,0,0)")
-                st.plotly_chart(_figcol, use_container_width=True)
+                _bc = (fdf.groupby("college").size()
+                       .reset_index(name="Reports").sort_values("Reports"))
+                _figc = px.bar(_bc, x="Reports", y="college", orientation="h",
+                               height=320, color_discrete_sequence=[BRAND["slate"]],
+                               title="Reports submitted by college")
+                _figc.update_layout(xaxis_title="Reports", yaxis_title=None,
+                                    template="plotly_white",
+                                    paper_bgcolor="rgba(0,0,0,0)",
+                                    plot_bgcolor="rgba(0,0,0,0)")
+                st.plotly_chart(_figc, use_container_width=True)
         with _cb:
-            _pipe = {
-                "Submitted": int(fdf["manuscripts_submitted"].sum()),
-                "Under review": int(fdf["manuscripts_under_review"].sum()),
-                "Accepted": int(fdf["manuscripts_accepted"].sum()),
-                "Published (Scopus)": int(fdf["scopus_faculty"].sum()
-                                          + fdf["scopus_student"].sum()),
-            }
-            _figf = go.Figure(go.Funnel(
-                y=list(_pipe.keys()), x=list(_pipe.values()),
-                marker=dict(color=[BRAND["amber"], BRAND["tan"],
-                                   BRAND["teal"], BRAND["sage"]])))
-            _figf.update_layout(height=300, title="Manuscript pipeline → output",
-                                template="plotly_white",
-                                paper_bgcolor="rgba(0,0,0,0)",
-                                plot_bgcolor="rgba(0,0,0,0)",
-                                margin=dict(t=40, b=10, l=10, r=10))
-            st.plotly_chart(_figf, use_container_width=True)
+            if len(fdf) and "period_key" in fdf.columns:
+                _bm = (fdf.groupby(["period_key", "Period"]).size()
+                       .reset_index(name="Reports").sort_values("period_key"))
+                _figm = px.bar(_bm, x="Period", y="Reports", height=320,
+                               color_discrete_sequence=[BRAND["tan"]],
+                               title="Reports submitted by month")
+                _figm.update_layout(xaxis_title=None, yaxis_title="Reports",
+                                    template="plotly_white",
+                                    paper_bgcolor="rgba(0,0,0,0)",
+                                    plot_bgcolor="rgba(0,0,0,0)")
+                _figm.update_xaxes(type="category")
+                st.plotly_chart(_figm, use_container_width=True)
 
         st.divider()
-        st.markdown("**Recent CRC reports**")
-        _show = [c for c in ["Period", "college", "crc_name", "grants_applied",
-                             "new_collaborations", "scopus_faculty",
-                             "scopus_student", "students_engaged", "status"]
-                 if c in fdf.columns]
+        st.markdown("**Submissions**")
+        _show = [c for c in ["Period", "college", "crc_name", "crc_email",
+                             "Form", "submitted_at"] if c in fdf.columns]
         _tbl = (fdf.sort_values("period_key", ascending=False)
                 if "period_key" in fdf.columns else fdf)
-        st.dataframe(_tbl[_show] if _show else _tbl,
-                     hide_index=True, use_container_width=True)
+        st.dataframe(
+            _tbl[_show] if _show else _tbl,
+            hide_index=True, use_container_width=True,
+            column_config={
+                "college": st.column_config.TextColumn("College"),
+                "crc_name": st.column_config.TextColumn("CRC"),
+                "crc_email": st.column_config.TextColumn("Email"),
+                "Form": st.column_config.CheckboxColumn("Form uploaded"),
+                "submitted_at": st.column_config.DatetimeColumn(
+                    "Submitted", format="YYYY-MM-DD HH:mm"),
+            },
+        )
 
 
 # ============================================================
