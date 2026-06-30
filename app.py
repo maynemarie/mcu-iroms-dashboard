@@ -195,6 +195,25 @@ st.markdown(f"""
     }}
     .forgot-link:hover {{ text-decoration: underline; }}
 
+    /* ===== Download buttons — consistent brand purple everywhere ===== */
+    [data-testid="stDownloadButton"] button {{
+        background-color: {PURPLE} !important;
+        border: 1px solid {PURPLE} !important;
+        color: #ffffff !important;
+    }}
+    [data-testid="stDownloadButton"] button p,
+    [data-testid="stDownloadButton"] button div {{
+        color: #ffffff !important;
+    }}
+    [data-testid="stDownloadButton"] button:hover,
+    [data-testid="stDownloadButton"] button:active,
+    [data-testid="stDownloadButton"] button:focus {{
+        background-color: #4c1d95 !important;
+        border-color: #4c1d95 !important;
+        color: #ffffff !important;
+        box-shadow: none !important;
+    }}
+
     /* ===== KPI / SECTION CARDS — wrap Streamlit columns in card-style frames ===== */
     /* Apply card styling to columns rows that look like KPI tiles */
     [data-testid="stHorizontalBlock"] [data-testid="stVerticalBlock"] > [data-testid="stElementContainer"] {{
