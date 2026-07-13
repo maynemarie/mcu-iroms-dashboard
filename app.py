@@ -3842,7 +3842,10 @@ elif page == "Capacity-Building Workshops":
 
         def feedback_cell(materials):
             """A 'View' link to the uploaded feedback document, or ''."""
-            path = (materials or "").strip()
+            if materials is None or (isinstance(materials, float)
+                                     and pd.isna(materials)):
+                return ""
+            path = str(materials).strip()
             if not path:
                 return ""
             url = ""
