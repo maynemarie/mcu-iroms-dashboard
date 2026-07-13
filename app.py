@@ -7443,48 +7443,174 @@ elif page == "Submit CRC Monthly Report":
 # ============================================================
 elif page == "In-house grants":
     require_roles("In-house grants", ["admin", "standard", "crc"])
-    st.markdown('<div class="section-heading">In-House Research Grants — Forms</div>',
+    st.markdown('<div class="section-heading">In-House Research Grants</div>',
                 unsafe_allow_html=True)
-    st.caption("Download the in-house research grant forms below, complete them, "
-               "and submit per IRO guidelines.")
+    st.caption("Download the grant forms, submit completed application forms and "
+               "progress reports, and view submissions.")
 
     from pathlib import Path as _P
     _tdir = _P(__file__).parent / "templates"
     _DOCX_MIME = ("application/vnd.openxmlformats-officedocument."
                   "wordprocessingml.document")
-    _grant_forms = [
-        ("In-house Research Grant — Application Form",
-         "IH_Grant_Application_Form.docx",
-         "In-house Research Grant - Application Form.docx",
-         "Apply for an in-house research grant."),
-        ("Acceptance, Recommendation & Endorsement",
-         "IH_Grant_Acceptance_Recommendation_Endorsement.docx",
-         "In-house Research Grant - Acceptance, Recommendation, Endorsement.docx",
-         "Acceptance / recommendation / endorsement of the awarded grant."),
-        ("Memorandum of Agreement",
-         "IH_Grant_Memorandum_of_Agreement.docx",
-         "In-house Research Grant - Memorandum of Agreement.docx",
-         "MOA between the grantee and MCU-IRO."),
-        ("Waiver on the Disbursement of IRO Research Fund",
-         "IH_Grant_Waiver_Disbursement.docx",
-         "In-house Research Grant - Waiver on Disbursement of MCU-IRO Funds.docx",
-         "Waiver on the disbursement and use of MCU-IRO funds."),
-        ("In-house Research Grant — Progress Report",
-         "IH_Grant_Progress_Report.docx",
-         "In-house Research Grant - Progress Report.docx",
-         "Periodic progress report for the funded project."),
-    ]
-    for _i, (_label, _fname, _dlname, _desc) in enumerate(_grant_forms, start=1):
-        _fp = _tdir / _fname
-        st.markdown(f"**{_i}. 📄 {_label}**")
-        st.caption(_desc)
-        if _fp.exists():
-            st.download_button(
-                "⬇️ Download", data=_fp.read_bytes(),
-                file_name=_dlname, mime=_DOCX_MIME, key=f"dl_ihg_{_i}")
+    _IHG_TABLE = "in_house_grant_submissions"
+    _IHG_BUCKET = "grant-reports"
+    _COLLEGES = ["", "Medicine", "Nursing", "Med Tech", "Pharmacy", "Dentistry",
+                 "Optometry", "Physical Therapy", "Business and Management", "Others"]
+
+    _ihg_ok = False
+    if sb is not None:
+        try:
+            sb.table(_IHG_TABLE).select("id").limit(1).execute()
+            _ihg_ok = True
+        except Exception:
+            _ihg_ok = False
+
+    tab_dl, tab_submit, tab_view = st.tabs(
+        ["📥 Download Forms", "📤 Submit", "📋 View Submissions"])
+
+    # ---------- Download forms ----------
+    with tab_dl:
+        _grant_forms = [
+            ("In-house Research Grant — Application Form",
+             "IH_Grant_Application_Form.docx",
+             "In-house Research Grant - Application Form.docx",
+             "Apply for an in-house research grant."),
+            ("Acceptance, Recommendation & Endorsement",
+             "IH_Grant_Acceptance_Recommendation_Endorsement.docx",
+             "In-house Research Grant - Acceptance, Recommendation, Endorsement.docx",
+             "Acceptance / recommendation / endorsement of the awarded grant."),
+            ("Memorandum of Agreement",
+             "IH_Grant_Memorandum_of_Agreement.docx",
+             "In-house Research Grant - Memorandum of Agreement.docx",
+             "MOA between the grantee and MCU-IRO."),
+            ("Waiver on the Disbursement of IRO Research Fund",
+             "IH_Grant_Waiver_Disbursement.docx",
+             "In-house Research Grant - Waiver on Disbursement of MCU-IRO Funds.docx",
+             "Waiver on the disbursement and use of MCU-IRO funds."),
+            ("In-house Research Grant — Progress Report",
+             "IH_Grant_Progress_Report.docx",
+             "In-house Research Grant - Progress Report.docx",
+             "Periodic progress report for the funded project."),
+        ]
+        for _i, (_label, _fname, _dlname, _desc) in enumerate(_grant_forms, start=1):
+            _fp = _tdir / _fname
+            st.markdown(f"**{_i}. 📄 {_label}**")
+            st.caption(_desc)
+            if _fp.exists():
+                st.download_button(
+                    "⬇️ Download", data=_fp.read_bytes(),
+                    file_name=_dlname, mime=_DOCX_MIME, key=f"dl_ihg_{_i}")
+            else:
+                st.caption("⚠️ Not yet available")
+            st.divider()
+
+    # ---------- Submit ----------
+    with tab_submit:
+        if not _ihg_ok:
+            st.info("ℹ️ Submissions aren't set up yet — run "
+                    "**`add_ih_grant_submissions.sql`** in the Supabase SQL "
+                    "Editor to enable them.")
+        st.caption("Upload a completed **Application Form** or **Progress Report**.")
+        with st.form("ihg_submit_form", clear_on_submit=True):
+            _stype = st.selectbox("Document type *",
+                                  ["Application Form", "Progress Report"])
+            _sc1, _sc2 = st.columns(2)
+            with _sc1:
+                _sname = st.text_input("Your name *")
+            with _sc2:
+                _semail = st.text_input("Email")
+            _sc3, _sc4 = st.columns(2)
+            with _sc3:
+                _scollege = st.selectbox("College", _COLLEGES)
+            with _sc4:
+                _sproject = st.text_input("Project title")
+            _snotes = st.text_area("Notes (optional)", max_chars=500, height=80)
+            _sfile = st.file_uploader("Completed form *",
+                                      type=["docx", "doc", "pdf"],
+                                      accept_multiple_files=False)
+            _ssub = st.form_submit_button("📤 Submit", type="primary")
+            if _ssub:
+                if not _sname or _sfile is None:
+                    st.error("Enter your name and attach the completed form.")
+                elif not _ihg_ok:
+                    st.error("Submissions table isn't set up yet (see note above).")
+                else:
+                    _doc_path = None
+                    try:
+                        import mimetypes as _mt
+                        _ts = datetime.now().strftime("%Y%m%dT%H%M%S")
+                        _doc_path = f"in-house-grants/{_ts}_{_sfile.name}"
+                        _ct = (_sfile.type or _mt.guess_type(_sfile.name)[0]
+                               or "application/octet-stream")
+                        sb.storage.from_(_IHG_BUCKET).upload(
+                            _doc_path, _sfile.getvalue(),
+                            {"content-type": _ct,
+                             "content-disposition": "inline"})
+                    except Exception as e:
+                        _doc_path = None
+                        st.warning(f"File upload failed: {e}. Submission recorded.")
+                    _row = {
+                        "submission_type": _stype,
+                        "applicant_name": _sname,
+                        "applicant_email": _semail or None,
+                        "college": _scollege or None,
+                        "project_title": _sproject or None,
+                        "notes": _snotes or None,
+                        "doc_path": _doc_path,
+                        "doc_filename": _sfile.name,
+                    }
+                    if db_insert(_IHG_TABLE, _row):
+                        st.success(f"✅ {_stype} submitted. Thank you, {_sname}.")
+
+    # ---------- View submissions ----------
+    with tab_view:
+        _subs = (db_select(_IHG_TABLE, order_col="submitted_at", desc=True)
+                 if _ihg_ok else [])
+        if not _ihg_ok:
+            st.info("Submissions aren't set up yet.")
+        elif not _subs:
+            st.info("No submissions yet.")
         else:
-            st.caption("⚠️ Not yet available")
-        st.divider()
+            _vt1, _vt2 = st.columns(2)
+            with _vt1:
+                _tf = st.multiselect("Type",
+                                     ["Application Form", "Progress Report"],
+                                     default=[], key="ihg_view_type")
+            with _vt2:
+                _colls = sorted({s.get("college") for s in _subs if s.get("college")})
+                _cf = st.multiselect("College", _colls, default=[],
+                                     key="ihg_view_college")
+            _shown = 0
+            for _s in _subs:
+                if _tf and _s.get("submission_type") not in _tf:
+                    continue
+                if _cf and _s.get("college") not in _cf:
+                    continue
+                _shown += 1
+                _ttl = (f"{_s.get('submission_type', '?')} — "
+                        f"{_s.get('applicant_name', '?')}")
+                if _s.get("project_title"):
+                    _ttl += f" · {str(_s['project_title'])[:50]}"
+                with st.expander(f"📄 {_ttl}"):
+                    st.markdown(
+                        f"**College:** {_s.get('college') or '—'}  ·  "
+                        f"**Email:** {_s.get('applicant_email') or '—'}")
+                    if _s.get("notes"):
+                        st.caption(_s["notes"])
+                    _dp = _s.get("doc_path")
+                    if _dp and sb is not None:
+                        try:
+                            _r = sb.storage.from_(_IHG_BUCKET).create_signed_url(
+                                _dp, 3600)
+                            _u = _r.get("signedURL") or _r.get("signed_url") or ""
+                        except Exception:
+                            _u = ""
+                        if _u:
+                            st.link_button("📥 Download submitted file", _u)
+                    st.caption("Submitted " + str(
+                        _s.get("submitted_at", ""))[:19].replace("T", " "))
+            if (_tf or _cf) and _shown == 0:
+                st.info("No submissions match the filters.")
 
 
 # ============================================================
