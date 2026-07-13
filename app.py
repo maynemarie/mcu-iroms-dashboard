@@ -7524,8 +7524,8 @@ elif page == "In-house grants":
         except Exception:
             _ihg_ok = False
 
-    tab_dl, tab_submit, tab_view = st.tabs(
-        ["📥 Download Forms", "📤 Submit", "📋 View Submissions"])
+    tab_dl, tab_view = st.tabs(
+        ["📥 Download Forms", "📋 View Submissions"])
 
     # ---------- Download forms ----------
     with tab_dl:
@@ -7563,104 +7563,31 @@ elif page == "In-house grants":
                 st.caption("⚠️ Not yet available")
             st.divider()
 
-    # ---------- Submit ----------
-    with tab_submit:
-        if not _ihg_ok:
-            st.info("ℹ️ Submissions aren't set up yet — run "
-                    "**`add_ih_grant_submissions.sql`** in the Supabase SQL "
-                    "Editor to enable them.")
-        st.caption("Upload a completed **Application Form** or **Progress Report**.")
-        with st.form("ihg_submit_form", clear_on_submit=True):
-            _stype = st.selectbox("Document type *",
-                                  ["Application Form", "Progress Report"])
-            _sc1, _sc2 = st.columns(2)
-            with _sc1:
-                _sname = st.text_input("Your name *")
-            with _sc2:
-                _semail = st.text_input("Email")
-            _sc3, _sc4 = st.columns(2)
-            with _sc3:
-                _scollege = st.selectbox("College", _COLLEGES)
-            with _sc4:
-                _sproj_id = st.text_input(
-                    "Project ID", placeholder="e.g., MCU-IHG-2026-0001")
-            _sproject = st.text_input("Project title")
-            _sc5, _sc6 = st.columns(2)
-            with _sc5:
-                _slead = st.text_input("Project lead")
-            with _sc6:
-                _speriod = st.text_input(
-                    "Reporting period", placeholder="e.g., Nov 2025 – Jun 2026")
-            _MON = ["—", "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-                    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
-            _YR = ["—"] + [str(_y) for _y in range(2024, 2031)]
-            _dc1, _dc2, _dc3, _dc4 = st.columns(4)
-            with _dc1:
-                _cm = st.selectbox("Commencement — month", _MON, key="ihg_cm")
-            with _dc2:
-                _cy = st.selectbox("Year", _YR, key="ihg_cy")
-            with _dc3:
-                _em = st.selectbox("Completion — month", _MON, key="ihg_em")
-            with _dc4:
-                _ey = st.selectbox("Year", _YR, key="ihg_ey")
-            _scommence = (f"{_cm} {_cy}" if _cm != "—" and _cy != "—" else None)
-            _scomplete = (f"{_em} {_ey}" if _em != "—" and _ey != "—" else None)
-            _snotes = st.text_area("Notes (optional)", max_chars=500, height=80)
-            _sfile = st.file_uploader("Completed form *",
-                                      type=["docx", "doc", "pdf"],
-                                      accept_multiple_files=False)
-            _ssub = st.form_submit_button("📤 Submit", type="primary")
-            if _ssub:
-                if not _sname or _sfile is None:
-                    st.error("Enter your name and attach the completed form.")
-                elif not _ihg_ok:
-                    st.error("Submissions table isn't set up yet (see note above).")
-                else:
-                    _doc_path = None
-                    try:
-                        import mimetypes as _mt
-                        _ts = datetime.now().strftime("%Y%m%dT%H%M%S")
-                        _doc_path = f"in-house-grants/{_ts}_{_sfile.name}"
-                        _ct = (_sfile.type or _mt.guess_type(_sfile.name)[0]
-                               or "application/octet-stream")
-                        sb.storage.from_(_IHG_BUCKET).upload(
-                            _doc_path, _sfile.getvalue(),
-                            {"content-type": _ct,
-                             "content-disposition": "inline"})
-                    except Exception as e:
-                        _doc_path = None
-                        st.warning(f"File upload failed: {e}. Submission recorded.")
-                    _row = {
-                        "submission_type": _stype,
-                        "applicant_name": _sname,
-                        "applicant_email": _semail or None,
-                        "college": _scollege or None,
-                        "project_id": _sproj_id or None,
-                        "project_title": _sproject or None,
-                        "project_lead": _slead or None,
-                        "reporting_period": _speriod or None,
-                        "commencement": _scommence,
-                        "expected_completion": _scomplete,
-                        "notes": _snotes or None,
-                        "doc_path": _doc_path,
-                        "doc_filename": _sfile.name,
-                    }
-                    _ok, _note = insert_tolerant(_IHG_TABLE, _row)
-                    if _ok:
-                        st.success(f"✅ {_stype} submitted. Thank you, "
-                                   f"{_sname}.{_note}")
-                    else:
-                        st.error(f"❌ Couldn't save your submission: {_note}")
-
-    # ---------- View submissions ----------
+    # ---------- View submissions (editable table + upload) ----------
     with tab_view:
-        _subs = (db_select(_IHG_TABLE, order_col="submitted_at", desc=True)
-                 if _ihg_ok else [])
         if not _ihg_ok:
-            st.info("Submissions aren't set up yet.")
-        elif not _subs:
-            st.info("No submissions yet.")
+            st.info("Submissions aren't set up yet — run "
+                    "`add_ih_grant_submissions.sql` in the Supabase SQL Editor.")
         else:
+            def _ihg_doc_url(dp, filename=""):
+                if not dp or sb is None:
+                    return ""
+                try:
+                    r = sb.storage.from_(_IHG_BUCKET).create_signed_url(dp, 3600)
+                    u = r.get("signedURL") or r.get("signed_url") or ""
+                except Exception:
+                    return ""
+                if not u:
+                    return ""
+                ext = (filename or dp or "").lower().rsplit(".", 1)[-1]
+                if ext in ("doc", "docx", "ppt", "pptx", "xls", "xlsx"):
+                    from urllib.parse import quote
+                    return ("https://view.officeapps.live.com/op/view.aspx?src="
+                            + quote(u, safe=""))
+                return u
+
+            _subs = db_select(_IHG_TABLE, order_col="submitted_at", desc=True) or []
+
             _vt1, _vt2 = st.columns(2)
             with _vt1:
                 _tf = st.multiselect("Type",
@@ -7673,133 +7600,174 @@ elif page == "In-house grants":
             _filtered = [s for s in _subs
                          if (not _tf or s.get("submission_type") in _tf)
                          and (not _cf or s.get("college") in _cf)]
-            if not _filtered:
-                st.info("No submissions match the filters.")
-            else:
-                _tbl_df = pd.DataFrame([{
+
+            if _filtered:
+                _rows = [{
+                    "id": s.get("id"),
+                    "Type": s.get("submission_type") or "",
                     "Project ID": s.get("project_id") or "",
                     "Title": s.get("project_title") or "",
                     "Project Lead": s.get("project_lead") or "",
                     "Reporting Period": s.get("reporting_period") or "",
                     "Commencement": s.get("commencement") or "",
                     "Expected Completion": s.get("expected_completion") or "",
-                } for s in _filtered])
-                st.dataframe(_tbl_df, hide_index=True, use_container_width=True)
-                st.markdown("**Details**")
-            for _s in _filtered:
-                _ttl = f"{_s.get('submission_type', '?')} — "
-                if _s.get("project_id"):
-                    _ttl += f"{_s['project_id']} · "
-                _ttl += str(_s.get("applicant_name", "?"))
-                if _s.get("project_title"):
-                    _ttl += f" · {str(_s['project_title'])[:50]}"
-                with st.expander(f"📄 {_ttl}"):
-                    st.markdown(
-                        f"**Project ID:** {_s.get('project_id') or '—'}  ·  "
-                        f"**College:** {_s.get('college') or '—'}  ·  "
-                        f"**Email:** {_s.get('applicant_email') or '—'}")
-                    if _s.get("notes"):
-                        st.caption(_s["notes"])
-                    _dp = _s.get("doc_path")
-                    if _dp and sb is not None:
-                        try:
-                            _r = sb.storage.from_(_IHG_BUCKET).create_signed_url(
-                                _dp, 3600)
-                            _u = _r.get("signedURL") or _r.get("signed_url") or ""
-                        except Exception:
-                            _u = ""
-                        if _u:
-                            st.link_button("📥 Download submitted file", _u)
-                    st.caption("Submitted " + str(
-                        _s.get("submitted_at", ""))[:19].replace("T", " "))
-
-                    if _IS_ADMIN:
-                        st.divider()
-                        st.caption("✏️ Admin — edit or delete this submission")
-                        with st.form(f"ihg_edit_{_s['id']}"):
-                            _ec1, _ec2 = st.columns(2)
-                            with _ec1:
-                                _e_type = st.selectbox(
-                                    "Type", ["Application Form", "Progress Report"],
-                                    index=(0 if _s.get("submission_type")
-                                           == "Application Form" else 1),
-                                    key=f"ihg_e_type_{_s['id']}")
-                                _e_name = st.text_input(
-                                    "Name", value=_s.get("applicant_name") or "",
-                                    key=f"ihg_e_name_{_s['id']}")
-                                _e_email = st.text_input(
-                                    "Email", value=_s.get("applicant_email") or "",
-                                    key=f"ihg_e_email_{_s['id']}")
-                            with _ec2:
-                                _e_college = st.selectbox(
-                                    "College", _COLLEGES,
-                                    index=(_COLLEGES.index(_s.get("college"))
-                                           if _s.get("college") in _COLLEGES else 0),
-                                    key=f"ihg_e_coll_{_s['id']}")
-                                _e_pid = st.text_input(
-                                    "Project ID", value=_s.get("project_id") or "",
-                                    key=f"ihg_e_pid_{_s['id']}")
-                                _e_ptitle = st.text_input(
-                                    "Project title",
-                                    value=_s.get("project_title") or "",
-                                    key=f"ihg_e_ptitle_{_s['id']}")
-                            _el1, _el2 = st.columns(2)
-                            with _el1:
-                                _e_lead = st.text_input(
-                                    "Project lead",
-                                    value=_s.get("project_lead") or "",
-                                    key=f"ihg_e_lead_{_s['id']}")
-                            with _el2:
-                                _e_period = st.text_input(
-                                    "Reporting period",
-                                    value=_s.get("reporting_period") or "",
-                                    key=f"ihg_e_period_{_s['id']}")
-                            _ed1, _ed2 = st.columns(2)
-                            with _ed1:
-                                _e_comm = st.text_input(
-                                    "Commencement (e.g. Nov 2025)",
-                                    value=_s.get("commencement") or "",
-                                    key=f"ihg_e_comm_{_s['id']}")
-                            with _ed2:
-                                _e_comp = st.text_input(
-                                    "Expected completion (e.g. Jun 2026)",
-                                    value=_s.get("expected_completion") or "",
-                                    key=f"ihg_e_comp_{_s['id']}")
-                            _e_notes = st.text_area(
-                                "Notes", value=_s.get("notes") or "", height=70,
-                                key=f"ihg_e_notes_{_s['id']}")
-                            if st.form_submit_button("💾 Save changes",
-                                                     type="primary"):
-                                _upd = {
-                                    "submission_type": _e_type,
-                                    "applicant_name": _e_name or None,
-                                    "applicant_email": _e_email or None,
-                                    "college": _e_college or None,
-                                    "project_id": _e_pid or None,
-                                    "project_title": _e_ptitle or None,
-                                    "project_lead": _e_lead or None,
-                                    "reporting_period": _e_period or None,
-                                    "commencement": _e_comm or None,
-                                    "expected_completion": _e_comp or None,
-                                    "notes": _e_notes or None,
-                                }
-                                if db_update(_IHG_TABLE, _s["id"], _upd):
-                                    st.success("✅ Updated.")
-                                    st.rerun()
-                        _cdel = st.checkbox(
-                            "Confirm delete", key=f"ihg_cdel_{_s['id']}")
-                        if st.button("🗑️ Delete submission",
-                                     key=f"ihg_del_{_s['id']}",
-                                     disabled=not _cdel):
+                    "Document": _ihg_doc_url(s.get("doc_path"), s.get("doc_filename")),
+                } for s in _filtered]
+                _edf = pd.DataFrame(_rows)
+                _editable = ["Type", "Project ID", "Title", "Project Lead",
+                             "Reporting Period", "Commencement",
+                             "Expected Completion"]
+                _disabled = (["id", "Document"] if _IS_ADMIN
+                             else ["id", "Document"] + _editable)
+                st.data_editor(
+                    _edf, hide_index=True, use_container_width=True,
+                    num_rows="fixed", key="ihg_editor", disabled=_disabled,
+                    column_config={
+                        "id": None,
+                        "Type": st.column_config.SelectboxColumn(
+                            "Type",
+                            options=["Application Form", "Progress Report"]),
+                        "Title": st.column_config.TextColumn("Title", width="large"),
+                        "Document": st.column_config.LinkColumn(
+                            "Document", display_text="📄 View", disabled=True),
+                    },
+                )
+                if _IS_ADMIN:
+                    if st.button("💾 Save table edits", key="ihg_save_tbl",
+                                 type="primary"):
+                        _state = st.session_state.get("ihg_editor", {})
+                        _ers = (_state.get("edited_rows", {})
+                                if isinstance(_state, dict) else {})
+                        _fmap = {"Type": "submission_type",
+                                 "Project ID": "project_id",
+                                 "Title": "project_title",
+                                 "Project Lead": "project_lead",
+                                 "Reporting Period": "reporting_period",
+                                 "Commencement": "commencement",
+                                 "Expected Completion": "expected_completion"}
+                        _saved = 0
+                        for _pos, _ch in _ers.items():
                             try:
-                                if _s.get("doc_path"):
+                                _sid = _rows[int(_pos)]["id"]
+                            except Exception:
+                                continue
+                            _upd = {_fmap[c]: (v if v != "" else None)
+                                    for c, v in _ch.items() if c in _fmap}
+                            if _upd and db_update(_IHG_TABLE, _sid, _upd):
+                                _saved += 1
+                        if _saved:
+                            st.success(f"✅ Saved {_saved} change(s).")
+                            st.rerun()
+                        else:
+                            st.info("No changes to save.")
+                    st.caption("Admins: type directly in the cells, then "
+                               "**Save table edits**. Click **📄 View** to open a "
+                               "document.")
+            else:
+                st.info("No submissions yet — add one below.")
+
+            # ----- Upload a progress report / form (the last-row uploader) -----
+            st.divider()
+            with st.expander("➕ Upload a progress report / application form",
+                             expanded=not _filtered):
+                with st.form("ihg_add_form", clear_on_submit=True):
+                    _atype = st.selectbox("Document type *",
+                                          ["Progress Report", "Application Form"])
+                    _aa1, _aa2 = st.columns(2)
+                    with _aa1:
+                        _aname = st.text_input("Your name *")
+                        _apid = st.text_input("Project ID")
+                        _alead = st.text_input("Project lead")
+                    with _aa2:
+                        _acollege = st.selectbox("College", _COLLEGES)
+                        _atitle = st.text_input("Project title")
+                        _aperiod = st.text_input(
+                            "Reporting period",
+                            placeholder="e.g., Nov 2025 – Jun 2026")
+                    _MON = ["—", "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                            "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+                    _YR = ["—"] + [str(_y) for _y in range(2024, 2031)]
+                    _ad1, _ad2, _ad3, _ad4 = st.columns(4)
+                    with _ad1:
+                        _acm = st.selectbox("Commencement — month", _MON,
+                                            key="ihg_a_cm")
+                    with _ad2:
+                        _acy = st.selectbox("Year", _YR, key="ihg_a_cy")
+                    with _ad3:
+                        _aem = st.selectbox("Completion — month", _MON,
+                                            key="ihg_a_em")
+                    with _ad4:
+                        _aey = st.selectbox("Year", _YR, key="ihg_a_ey")
+                    _afile = st.file_uploader("Progress report / form *",
+                                              type=["docx", "doc", "pdf"],
+                                              accept_multiple_files=False)
+                    if st.form_submit_button("📤 Upload", type="primary"):
+                        if not _aname or _afile is None:
+                            st.error("Enter your name and attach a file.")
+                        else:
+                            _adoc = None
+                            try:
+                                import mimetypes as _mt
+                                _ts = datetime.now().strftime("%Y%m%dT%H%M%S")
+                                _adoc = f"in-house-grants/{_ts}_{_afile.name}"
+                                _ct = (_afile.type
+                                       or _mt.guess_type(_afile.name)[0]
+                                       or "application/octet-stream")
+                                sb.storage.from_(_IHG_BUCKET).upload(
+                                    _adoc, _afile.getvalue(),
+                                    {"content-type": _ct,
+                                     "content-disposition": "inline"})
+                            except Exception as e:
+                                _adoc = None
+                                st.warning(f"File upload failed: {e}. Record saved.")
+                            _arow = {
+                                "submission_type": _atype,
+                                "applicant_name": _aname,
+                                "college": _acollege or None,
+                                "project_id": _apid or None,
+                                "project_title": _atitle or None,
+                                "project_lead": _alead or None,
+                                "reporting_period": _aperiod or None,
+                                "commencement": (f"{_acm} {_acy}"
+                                                 if _acm != "—" and _acy != "—"
+                                                 else None),
+                                "expected_completion": (f"{_aem} {_aey}"
+                                                        if _aem != "—" and _aey != "—"
+                                                        else None),
+                                "doc_path": _adoc,
+                                "doc_filename": _afile.name,
+                            }
+                            _ok, _note = insert_tolerant(_IHG_TABLE, _arow)
+                            if _ok:
+                                st.success(f"✅ Uploaded.{_note}")
+                                st.rerun()
+                            else:
+                                st.error(f"❌ Couldn't save: {_note}")
+
+            # ----- Admin delete -----
+            if _IS_ADMIN and _subs:
+                with st.expander("🗑️ Delete a submission"):
+                    _dmap = {
+                        f"{s.get('project_id') or '(no ID)'} — "
+                        f"{s.get('submission_type')} — "
+                        f"{(s.get('project_title') or s.get('applicant_name') or '')[:40]}": s
+                        for s in _subs}
+                    _dpick = st.selectbox("Select submission",
+                                          list(_dmap.keys()), key="ihg_del_pick")
+                    _dconf = st.checkbox("Confirm delete", key="ihg_del_conf")
+                    if st.button("🗑️ Delete", key="ihg_del_btn",
+                                 disabled=not _dconf):
+                        _tgt = _dmap.get(_dpick)
+                        if _tgt:
+                            try:
+                                if _tgt.get("doc_path"):
                                     try:
                                         sb.storage.from_(_IHG_BUCKET).remove(
-                                            [_s["doc_path"]])
+                                            [_tgt["doc_path"]])
                                     except Exception:
                                         pass
                                 sb.table(_IHG_TABLE).delete().eq(
-                                    "id", _s["id"]).execute()
+                                    "id", _tgt["id"]).execute()
                                 st.success("🗑️ Deleted.")
                                 st.rerun()
                             except Exception as e:
