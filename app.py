@@ -3785,14 +3785,25 @@ elif page == "In-House Grants (view)":
         s = g.get("status") or "Unknown"
         db_status[s] = db_status.get(s, 0) + 1
 
+    # Progress reports submitted — from the In-house grants Submit tab.
+    progress_reports = 0
+    if sb is not None:
+        try:
+            _pr = (sb.table("in_house_grant_submissions")
+                   .select("id", count="exact")
+                   .eq("submission_type", "Progress Report").execute())
+            progress_reports = _pr.count or 0
+        except Exception:
+            progress_reports = 0
+
     # Boxes to display (in lifecycle order) — muted brand palette
     status_boxes = [
-        ("Submitted",          db_status.get("Submitted", 0),          BRAND["slate"]),
-        ("Approved",           6,                                       BRAND["moss"]),
-        ("In Progress",        6,                                       BRAND["amber"]),
-        ("Mid Project Report", db_status.get("Mid Project Report", 0), BRAND["tan"]),
-        ("Final Report",       db_status.get("Final Report", 0),       BRAND["plum"]),
-        ("Completed",          db_status.get("Completed", 0),          BRAND["sage"]),
+        ("Submitted",             db_status.get("Submitted", 0),  BRAND["slate"]),
+        ("Approved",              6,                              BRAND["moss"]),
+        ("In Progress",           6,                              BRAND["amber"]),
+        ("Progress Reports Submitted", progress_reports,          BRAND["tan"]),
+        ("Final Report",          db_status.get("Final Report", 0), BRAND["plum"]),
+        ("Completed",             db_status.get("Completed", 0),  BRAND["sage"]),
     ]
     cols = st.columns(len(status_boxes))
     for col, (label, count, color) in zip(cols, status_boxes):
