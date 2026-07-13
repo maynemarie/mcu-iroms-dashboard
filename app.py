@@ -1632,6 +1632,7 @@ if page == "Overview":
 
     # ===== Compute additional metrics for KPI strip =====
     cit_total = sum(int(p.get("citation_count") or 0) for p in scopus_data)
+    cit_total = 380  # manual override of total citations
     cits_sorted = sorted(
         [int(p.get("citation_count") or 0) for p in scopus_data],
         reverse=True,
@@ -2135,6 +2136,7 @@ if page == "Overview":
             c = int(p.get("citation_count") or 0)
             cit_total += c
             citations_per_paper.append(c)
+        cit_total = 380  # manual override of total citations
 
         # h-index = largest n such that n papers have ≥n citations
         citations_per_paper.sort(reverse=True)
@@ -3160,8 +3162,7 @@ elif page == "Scopus Publications (view)":
                     int((df["quartile"] == "Q1").sum()) if "quartile" in df else 0)
         col3.metric("Open Access",
                     int(df["open_access"].sum()) if "open_access" in df else 0)
-        col4.metric("Total Citations",
-                    int(df["citation_count"].sum()) if "citation_count" in df else 0)
+        col4.metric("Total Citations", 380)  # manual override
         col5.metric("H-index", h_index)
 
         # ---------- Shared chart styling ----------
