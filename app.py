@@ -7678,6 +7678,72 @@ elif page == "In-house grants":
                             st.link_button("📥 Download submitted file", _u)
                     st.caption("Submitted " + str(
                         _s.get("submitted_at", ""))[:19].replace("T", " "))
+
+                    if _IS_ADMIN:
+                        st.divider()
+                        st.caption("✏️ Admin — edit or delete this submission")
+                        with st.form(f"ihg_edit_{_s['id']}"):
+                            _ec1, _ec2 = st.columns(2)
+                            with _ec1:
+                                _e_type = st.selectbox(
+                                    "Type", ["Application Form", "Progress Report"],
+                                    index=(0 if _s.get("submission_type")
+                                           == "Application Form" else 1),
+                                    key=f"ihg_e_type_{_s['id']}")
+                                _e_name = st.text_input(
+                                    "Name", value=_s.get("applicant_name") or "",
+                                    key=f"ihg_e_name_{_s['id']}")
+                                _e_email = st.text_input(
+                                    "Email", value=_s.get("applicant_email") or "",
+                                    key=f"ihg_e_email_{_s['id']}")
+                            with _ec2:
+                                _e_college = st.selectbox(
+                                    "College", _COLLEGES,
+                                    index=(_COLLEGES.index(_s.get("college"))
+                                           if _s.get("college") in _COLLEGES else 0),
+                                    key=f"ihg_e_coll_{_s['id']}")
+                                _e_pid = st.text_input(
+                                    "Project ID", value=_s.get("project_id") or "",
+                                    key=f"ihg_e_pid_{_s['id']}")
+                                _e_ptitle = st.text_input(
+                                    "Project title",
+                                    value=_s.get("project_title") or "",
+                                    key=f"ihg_e_ptitle_{_s['id']}")
+                            _e_notes = st.text_area(
+                                "Notes", value=_s.get("notes") or "", height=70,
+                                key=f"ihg_e_notes_{_s['id']}")
+                            if st.form_submit_button("💾 Save changes",
+                                                     type="primary"):
+                                _upd = {
+                                    "submission_type": _e_type,
+                                    "applicant_name": _e_name or None,
+                                    "applicant_email": _e_email or None,
+                                    "college": _e_college or None,
+                                    "project_id": _e_pid or None,
+                                    "project_title": _e_ptitle or None,
+                                    "notes": _e_notes or None,
+                                }
+                                if db_update(_IHG_TABLE, _s["id"], _upd):
+                                    st.success("✅ Updated.")
+                                    st.rerun()
+                        _cdel = st.checkbox(
+                            "Confirm delete", key=f"ihg_cdel_{_s['id']}")
+                        if st.button("🗑️ Delete submission",
+                                     key=f"ihg_del_{_s['id']}",
+                                     disabled=not _cdel):
+                            try:
+                                if _s.get("doc_path"):
+                                    try:
+                                        sb.storage.from_(_IHG_BUCKET).remove(
+                                            [_s["doc_path"]])
+                                    except Exception:
+                                        pass
+                                sb.table(_IHG_TABLE).delete().eq(
+                                    "id", _s["id"]).execute()
+                                st.success("🗑️ Deleted.")
+                                st.rerun()
+                            except Exception as e:
+                                st.error(f"Delete failed: {e}")
             if (_tf or _cf) and _shown == 0:
                 st.info("No submissions match the filters.")
 
