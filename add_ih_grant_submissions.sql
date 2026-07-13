@@ -12,15 +12,23 @@ create table if not exists public.in_house_grant_submissions (
     college          text,
     project_id       text,
     project_title    text,
+    project_lead     text,
+    reporting_period text,
+    commencement     date,
+    expected_completion date,
     doc_path         text,
     doc_filename     text,
     notes            text,
     submitted_at     timestamptz not null default now()
 );
 
--- For installs that created the table before project_id was added:
+-- For installs created before these columns existed:
 alter table public.in_house_grant_submissions
-    add column if not exists project_id text;
+    add column if not exists project_id text,
+    add column if not exists project_lead text,
+    add column if not exists reporting_period text,
+    add column if not exists commencement date,
+    add column if not exists expected_completion date;
 
 -- The dashboard uses the anon key (no per-user session), like the other
 -- tables — so RLS must be off (or fully permissive) for inserts to work.

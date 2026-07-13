@@ -7585,6 +7585,19 @@ elif page == "In-house grants":
                 _sproj_id = st.text_input(
                     "Project ID", placeholder="e.g., MCU-IHG-2026-0001")
             _sproject = st.text_input("Project title")
+            _sc5, _sc6 = st.columns(2)
+            with _sc5:
+                _slead = st.text_input("Project lead")
+            with _sc6:
+                _speriod = st.text_input(
+                    "Reporting period", placeholder="e.g., Nov 2025 – Jun 2026")
+            _sc7, _sc8 = st.columns(2)
+            with _sc7:
+                _scommence = st.date_input("Commencement", value=None,
+                                           format="MM/DD/YYYY")
+            with _sc8:
+                _scomplete = st.date_input("Expected completion", value=None,
+                                           format="MM/DD/YYYY")
             _snotes = st.text_area("Notes (optional)", max_chars=500, height=80)
             _sfile = st.file_uploader("Completed form *",
                                       type=["docx", "doc", "pdf"],
@@ -7617,6 +7630,11 @@ elif page == "In-house grants":
                         "college": _scollege or None,
                         "project_id": _sproj_id or None,
                         "project_title": _sproject or None,
+                        "project_lead": _slead or None,
+                        "reporting_period": _speriod or None,
+                        "commencement": (str(_scommence) if _scommence else None),
+                        "expected_completion": (str(_scomplete)
+                                                if _scomplete else None),
                         "notes": _snotes or None,
                         "doc_path": _doc_path,
                         "doc_filename": _sfile.name,
@@ -7646,13 +7664,23 @@ elif page == "In-house grants":
                 _colls = sorted({s.get("college") for s in _subs if s.get("college")})
                 _cf = st.multiselect("College", _colls, default=[],
                                      key="ihg_view_college")
-            _shown = 0
-            for _s in _subs:
-                if _tf and _s.get("submission_type") not in _tf:
-                    continue
-                if _cf and _s.get("college") not in _cf:
-                    continue
-                _shown += 1
+            _filtered = [s for s in _subs
+                         if (not _tf or s.get("submission_type") in _tf)
+                         and (not _cf or s.get("college") in _cf)]
+            if not _filtered:
+                st.info("No submissions match the filters.")
+            else:
+                _tbl_df = pd.DataFrame([{
+                    "Project ID": s.get("project_id") or "",
+                    "Title": s.get("project_title") or "",
+                    "Project Lead": s.get("project_lead") or "",
+                    "Reporting Period": s.get("reporting_period") or "",
+                    "Commencement": s.get("commencement") or "",
+                    "Expected Completion": s.get("expected_completion") or "",
+                } for s in _filtered])
+                st.dataframe(_tbl_df, hide_index=True, use_container_width=True)
+                st.markdown("**Details**")
+            for _s in _filtered:
                 _ttl = f"{_s.get('submission_type', '?')} — "
                 if _s.get("project_id"):
                     _ttl += f"{_s['project_id']} · "
@@ -7709,6 +7737,28 @@ elif page == "In-house grants":
                                     "Project title",
                                     value=_s.get("project_title") or "",
                                     key=f"ihg_e_ptitle_{_s['id']}")
+                            _el1, _el2 = st.columns(2)
+                            with _el1:
+                                _e_lead = st.text_input(
+                                    "Project lead",
+                                    value=_s.get("project_lead") or "",
+                                    key=f"ihg_e_lead_{_s['id']}")
+                            with _el2:
+                                _e_period = st.text_input(
+                                    "Reporting period",
+                                    value=_s.get("reporting_period") or "",
+                                    key=f"ihg_e_period_{_s['id']}")
+                            _ed1, _ed2 = st.columns(2)
+                            with _ed1:
+                                _e_comm = st.text_input(
+                                    "Commencement (YYYY-MM-DD)",
+                                    value=_s.get("commencement") or "",
+                                    key=f"ihg_e_comm_{_s['id']}")
+                            with _ed2:
+                                _e_comp = st.text_input(
+                                    "Expected completion (YYYY-MM-DD)",
+                                    value=_s.get("expected_completion") or "",
+                                    key=f"ihg_e_comp_{_s['id']}")
                             _e_notes = st.text_area(
                                 "Notes", value=_s.get("notes") or "", height=70,
                                 key=f"ihg_e_notes_{_s['id']}")
@@ -7721,6 +7771,10 @@ elif page == "In-house grants":
                                     "college": _e_college or None,
                                     "project_id": _e_pid or None,
                                     "project_title": _e_ptitle or None,
+                                    "project_lead": _e_lead or None,
+                                    "reporting_period": _e_period or None,
+                                    "commencement": _e_comm or None,
+                                    "expected_completion": _e_comp or None,
                                     "notes": _e_notes or None,
                                 }
                                 if db_update(_IHG_TABLE, _s["id"], _upd):
@@ -7744,8 +7798,6 @@ elif page == "In-house grants":
                                 st.rerun()
                             except Exception as e:
                                 st.error(f"Delete failed: {e}")
-            if (_tf or _cf) and _shown == 0:
-                st.info("No submissions match the filters.")
 
 
 # ============================================================
