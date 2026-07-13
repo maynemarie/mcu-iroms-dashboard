@@ -1038,6 +1038,54 @@ def db_insert(table: str, row: dict) -> bool:
         return False
 
 
+def insert_tolerant(table: str, row: dict):
+    """Insert a row, tolerating a table whose schema has drifted from the code.
+
+    - Drops columns the table doesn't have (missing/uncached column) and retries,
+      so a schema/code mismatch never silently drops the whole submission.
+    - Turns row-level-security and check-constraint failures into a clear,
+      actionable message instead of a raw PostgREST error.
+
+    Returns (ok: bool, message: str). message is "" on success, or a
+    human-readable explanation on failure.
+    """
+    import re
+    if sb is None:
+        return False, "Database is not configured."
+    payload = {k: v for k, v in row.items()}
+    dropped = []
+    for _ in range(len(payload) + 1):
+        try:
+            sb.table(table).insert(payload).execute()
+            note = ""
+            if dropped:
+                note = (" (note: your database is missing column(s) "
+                        f"{', '.join(dropped)} — they weren't saved)")
+            return True, note
+        except Exception as e:
+            msg = str(e)
+            low = msg.lower()
+            m = (re.search(r"find the '([^']+)' column", low)
+                 or re.search(r"column [\"']?[\w.]*?([\w]+)[\"']? does not exist",
+                              low))
+            if m and m.group(1) in payload:
+                dropped.append(m.group(1))
+                payload.pop(m.group(1), None)
+                continue
+            if "row-level security" in low:
+                return False, (
+                    "Blocked by the database's row-level security. An admin "
+                    f"needs to run once in the Supabase SQL Editor: "
+                    f"`alter table public.{table} disable row level security;`")
+            if "check constraint" in low or "23514" in low:
+                return False, (
+                    "A value was rejected by a database check constraint "
+                    "(an allowed-values list is out of date). An admin needs to "
+                    "update that constraint.")
+            return False, f"Database error: {msg[:200]}"
+    return False, "Could not save even after adjusting for the table's columns."
+
+
 def db_update(table: str, row_id, updates: dict) -> bool:
     """UPDATE one row by id."""
     if sb is None:
@@ -7562,8 +7610,12 @@ elif page == "In-house grants":
                         "doc_path": _doc_path,
                         "doc_filename": _sfile.name,
                     }
-                    if db_insert(_IHG_TABLE, _row):
-                        st.success(f"✅ {_stype} submitted. Thank you, {_sname}.")
+                    _ok, _note = insert_tolerant(_IHG_TABLE, _row)
+                    if _ok:
+                        st.success(f"✅ {_stype} submitted. Thank you, "
+                                   f"{_sname}.{_note}")
+                    else:
+                        st.error(f"❌ Couldn't save your submission: {_note}")
 
     # ---------- View submissions ----------
     with tab_view:
