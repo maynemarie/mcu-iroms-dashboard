@@ -14,8 +14,8 @@ create table if not exists public.in_house_grant_submissions (
     project_title    text,
     project_lead     text,
     reporting_period text,
-    commencement     date,
-    expected_completion date,
+    commencement     text,   -- month + year, e.g. "Nov 2025"
+    expected_completion text,
     doc_path         text,
     doc_filename     text,
     notes            text,
@@ -27,8 +27,22 @@ alter table public.in_house_grant_submissions
     add column if not exists project_id text,
     add column if not exists project_lead text,
     add column if not exists reporting_period text,
-    add column if not exists commencement date,
-    add column if not exists expected_completion date;
+    add column if not exists commencement text,
+    add column if not exists expected_completion text;
+
+-- If commencement / expected_completion were created earlier as DATE,
+-- convert them to text (month + year) — safe no-op if already text.
+do $$
+begin
+    begin
+        alter table public.in_house_grant_submissions
+            alter column commencement type text;
+    exception when others then null; end;
+    begin
+        alter table public.in_house_grant_submissions
+            alter column expected_completion type text;
+    exception when others then null; end;
+end $$;
 
 -- The dashboard uses the anon key (no per-user session), like the other
 -- tables — so RLS must be off (or fully permissive) for inserts to work.

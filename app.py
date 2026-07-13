@@ -7591,13 +7591,20 @@ elif page == "In-house grants":
             with _sc6:
                 _speriod = st.text_input(
                     "Reporting period", placeholder="e.g., Nov 2025 – Jun 2026")
-            _sc7, _sc8 = st.columns(2)
-            with _sc7:
-                _scommence = st.date_input("Commencement", value=None,
-                                           format="MM/DD/YYYY")
-            with _sc8:
-                _scomplete = st.date_input("Expected completion", value=None,
-                                           format="MM/DD/YYYY")
+            _MON = ["—", "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+            _YR = ["—"] + [str(_y) for _y in range(2024, 2031)]
+            _dc1, _dc2, _dc3, _dc4 = st.columns(4)
+            with _dc1:
+                _cm = st.selectbox("Commencement — month", _MON, key="ihg_cm")
+            with _dc2:
+                _cy = st.selectbox("Year", _YR, key="ihg_cy")
+            with _dc3:
+                _em = st.selectbox("Completion — month", _MON, key="ihg_em")
+            with _dc4:
+                _ey = st.selectbox("Year", _YR, key="ihg_ey")
+            _scommence = (f"{_cm} {_cy}" if _cm != "—" and _cy != "—" else None)
+            _scomplete = (f"{_em} {_ey}" if _em != "—" and _ey != "—" else None)
             _snotes = st.text_area("Notes (optional)", max_chars=500, height=80)
             _sfile = st.file_uploader("Completed form *",
                                       type=["docx", "doc", "pdf"],
@@ -7632,9 +7639,8 @@ elif page == "In-house grants":
                         "project_title": _sproject or None,
                         "project_lead": _slead or None,
                         "reporting_period": _speriod or None,
-                        "commencement": (str(_scommence) if _scommence else None),
-                        "expected_completion": (str(_scomplete)
-                                                if _scomplete else None),
+                        "commencement": _scommence,
+                        "expected_completion": _scomplete,
                         "notes": _snotes or None,
                         "doc_path": _doc_path,
                         "doc_filename": _sfile.name,
@@ -7751,12 +7757,12 @@ elif page == "In-house grants":
                             _ed1, _ed2 = st.columns(2)
                             with _ed1:
                                 _e_comm = st.text_input(
-                                    "Commencement (YYYY-MM-DD)",
+                                    "Commencement (e.g. Nov 2025)",
                                     value=_s.get("commencement") or "",
                                     key=f"ihg_e_comm_{_s['id']}")
                             with _ed2:
                                 _e_comp = st.text_input(
-                                    "Expected completion (YYYY-MM-DD)",
+                                    "Expected completion (e.g. Jun 2026)",
                                     value=_s.get("expected_completion") or "",
                                     key=f"ihg_e_comp_{_s['id']}")
                             _e_notes = st.text_area(
