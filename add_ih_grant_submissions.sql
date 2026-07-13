@@ -22,5 +22,9 @@ create table if not exists public.in_house_grant_submissions (
 alter table public.in_house_grant_submissions
     add column if not exists project_id text;
 
+-- The dashboard uses the anon key (no per-user session), like the other
+-- tables — so RLS must be off (or fully permissive) for inserts to work.
+alter table public.in_house_grant_submissions disable row level security;
+
 create index if not exists ih_grant_submissions_when_idx
     on public.in_house_grant_submissions (submitted_at desc);
