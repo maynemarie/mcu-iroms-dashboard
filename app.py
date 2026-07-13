@@ -1086,6 +1086,22 @@ def insert_tolerant(table: str, row: dict):
     return False, "Could not save even after adjusting for the table's columns."
 
 
+@st.cache_data(ttl=3000, show_spinner=False)
+def signed_url_cached(bucket: str, path: str) -> str:
+    """Signed storage URL, cached so it stays STABLE across reruns.
+
+    (Regenerating a fresh signed URL every run changes a dataframe's values,
+    which makes st.data_editor discard in-progress cell edits.)
+    """
+    if not path or sb is None:
+        return ""
+    try:
+        r = sb.storage.from_(bucket).create_signed_url(path, 3600)
+        return r.get("signedURL") or r.get("signed_url") or ""
+    except Exception:
+        return ""
+
+
 def db_update(table: str, row_id, updates: dict) -> bool:
     """UPDATE one row by id."""
     if sb is None:
@@ -7570,13 +7586,9 @@ elif page == "In-house grants":
                     "`add_ih_grant_submissions.sql` in the Supabase SQL Editor.")
         else:
             def _ihg_doc_url(dp, filename=""):
-                if not dp or sb is None:
+                if not dp:
                     return ""
-                try:
-                    r = sb.storage.from_(_IHG_BUCKET).create_signed_url(dp, 3600)
-                    u = r.get("signedURL") or r.get("signed_url") or ""
-                except Exception:
-                    return ""
+                u = signed_url_cached(_IHG_BUCKET, dp)
                 if not u:
                     return ""
                 ext = (filename or dp or "").lower().rsplit(".", 1)[-1]
@@ -7619,7 +7631,7 @@ elif page == "In-house grants":
                              "Expected Completion"]
                 _disabled = (["id", "Document"] if _IS_ADMIN
                              else ["id", "Document"] + _editable)
-                st.data_editor(
+                _edited_df = st.data_editor(
                     _edf, hide_index=True, use_container_width=True,
                     num_rows="fixed", key="ihg_editor", disabled=_disabled,
                     column_config={
@@ -7635,9 +7647,6 @@ elif page == "In-house grants":
                 if _IS_ADMIN:
                     if st.button("💾 Save table edits", key="ihg_save_tbl",
                                  type="primary"):
-                        _state = st.session_state.get("ihg_editor", {})
-                        _ers = (_state.get("edited_rows", {})
-                                if isinstance(_state, dict) else {})
                         _fmap = {"Type": "submission_type",
                                  "Project ID": "project_id",
                                  "Title": "project_title",
@@ -7645,14 +7654,20 @@ elif page == "In-house grants":
                                  "Reporting Period": "reporting_period",
                                  "Commencement": "commencement",
                                  "Expected Completion": "expected_completion"}
+
+                        def _norm(v):
+                            return "" if v is None else str(v)
+
                         _saved = 0
-                        for _pos, _ch in _ers.items():
-                            try:
-                                _sid = _rows[int(_pos)]["id"]
-                            except Exception:
-                                continue
-                            _upd = {_fmap[c]: (v if v != "" else None)
-                                    for c, v in _ch.items() if c in _fmap}
+                        for _pos in range(len(_rows)):
+                            _sid = _rows[_pos]["id"]
+                            _upd = {}
+                            for _col, _field in _fmap.items():
+                                _ov = _edf.iloc[_pos][_col]
+                                _nv = _edited_df.iloc[_pos][_col]
+                                if _norm(_ov) != _norm(_nv):
+                                    _upd[_field] = (_nv if _nv not in (None, "")
+                                                    else None)
                             if _upd and db_update(_IHG_TABLE, _sid, _upd):
                                 _saved += 1
                         if _saved:
