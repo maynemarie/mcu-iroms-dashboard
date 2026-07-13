@@ -7530,7 +7530,8 @@ elif page == "In-house grants":
     _IHG_TABLE = "in_house_grant_submissions"
     _IHG_BUCKET = "grant-reports"
     _COLLEGES = ["", "Medicine", "Nursing", "Med Tech", "Pharmacy", "Dentistry",
-                 "Optometry", "Physical Therapy", "Business and Management", "Others"]
+                 "Optometry", "Physical Therapy", "Business and Management",
+                 "Arts & Sciences", "Others"]
 
     _ihg_ok = False
     if sb is not None:
