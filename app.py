@@ -3840,16 +3840,38 @@ elif page == "Capacity-Building Workshops":
                 return f"{s} – {e}"
             return s
 
+        def feedback_cell(materials):
+            """A 'View' link to the uploaded feedback document, or ''."""
+            path = (materials or "").strip()
+            if not path:
+                return ""
+            url = ""
+            if path.startswith("http"):
+                url = path
+            elif sb is not None:
+                try:
+                    res = sb.storage.from_("grant-reports").create_signed_url(
+                        path, 3600)
+                    url = res.get("signedURL") or res.get("signed_url") or ""
+                except Exception:
+                    url = ""
+            if not url:
+                return ""
+            return (f'<a href="{url}" target="_blank" '
+                    f'style="color:{PURPLE};text-decoration:none;'
+                    f'font-weight:600;">📄 View</a>')
+
         # Column widths (percent of table width)
         col_widths = [
             ("AY", 5),
-            ("Date", 11),
-            ("Title", 27),
-            ("Speakers", 24),
-            ("Type", 12),
+            ("Date", 10),
+            ("Title", 22),
+            ("Speakers", 20),
+            ("Type", 11),
             ("Status", 8),
             ("Attendance", 7),
-            ("Feedback /5", 6),
+            ("Feedback /5", 7),
+            ("Feedback Doc", 10),
         ]
 
         thead = "".join(
@@ -3872,6 +3894,7 @@ elif page == "Capacity-Building Workshops":
                 f'<td style="padding:10px;font-size:11px;color:#6b7280;border-bottom:1px solid #f3f4f6;vertical-align:top;white-space:nowrap;">{safe(r.get("status"))}</td>'
                 f'<td style="padding:10px;font-size:11px;color:#374151;border-bottom:1px solid #f3f4f6;vertical-align:top;text-align:right;">{safe(r.get("attendees"))}</td>'
                 f'<td style="padding:10px;font-size:11px;color:#374151;border-bottom:1px solid #f3f4f6;vertical-align:top;text-align:right;">{safe(r.get("feedback_score"))}</td>'
+                f'<td style="padding:10px;font-size:11px;border-bottom:1px solid #f3f4f6;vertical-align:top;text-align:center;">{feedback_cell(r.get("materials"))}</td>'
                 '</tr>'
             )
 
