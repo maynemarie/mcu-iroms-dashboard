@@ -10,12 +10,17 @@ create table if not exists public.in_house_grant_submissions (
     applicant_name   text        not null,
     applicant_email  text,
     college          text,
+    project_id       text,
     project_title    text,
     doc_path         text,
     doc_filename     text,
     notes            text,
     submitted_at     timestamptz not null default now()
 );
+
+-- For installs that created the table before project_id was added:
+alter table public.in_house_grant_submissions
+    add column if not exists project_id text;
 
 create index if not exists ih_grant_submissions_when_idx
     on public.in_house_grant_submissions (submitted_at desc);

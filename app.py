@@ -7523,7 +7523,9 @@ elif page == "In-house grants":
             with _sc3:
                 _scollege = st.selectbox("College", _COLLEGES)
             with _sc4:
-                _sproject = st.text_input("Project title")
+                _sproj_id = st.text_input(
+                    "Project ID", placeholder="e.g., MCU-IHG-2026-0001")
+            _sproject = st.text_input("Project title")
             _snotes = st.text_area("Notes (optional)", max_chars=500, height=80)
             _sfile = st.file_uploader("Completed form *",
                                       type=["docx", "doc", "pdf"],
@@ -7554,6 +7556,7 @@ elif page == "In-house grants":
                         "applicant_name": _sname,
                         "applicant_email": _semail or None,
                         "college": _scollege or None,
+                        "project_id": _sproj_id or None,
                         "project_title": _sproject or None,
                         "notes": _snotes or None,
                         "doc_path": _doc_path,
@@ -7587,12 +7590,15 @@ elif page == "In-house grants":
                 if _cf and _s.get("college") not in _cf:
                     continue
                 _shown += 1
-                _ttl = (f"{_s.get('submission_type', '?')} — "
-                        f"{_s.get('applicant_name', '?')}")
+                _ttl = f"{_s.get('submission_type', '?')} — "
+                if _s.get("project_id"):
+                    _ttl += f"{_s['project_id']} · "
+                _ttl += str(_s.get("applicant_name", "?"))
                 if _s.get("project_title"):
                     _ttl += f" · {str(_s['project_title'])[:50]}"
                 with st.expander(f"📄 {_ttl}"):
                     st.markdown(
+                        f"**Project ID:** {_s.get('project_id') or '—'}  ·  "
                         f"**College:** {_s.get('college') or '—'}  ·  "
                         f"**Email:** {_s.get('applicant_email') or '—'}")
                     if _s.get("notes"):
