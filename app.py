@@ -2688,64 +2688,66 @@ if page == "Overview":
                 return ""
             return str(v).replace("<", "&lt;").replace(">", "&gt;")
 
-        pipeline_cols_html = ""
-        for s in STATUS_PIPELINE_ORDER:
-            bag = by_status.get(s, [])
-            bg, fg, border = STATUS_BADGE.get(s, ("#f1f3f7", "#475569", "#94a3b8"))
-            items_html = ""
-            for g in bag[:8]:
-                title = _safe((g.get("title") or "")[:60])
+        # One row per application, with the stage as a chip on the row.
+        # Stages with nothing in them are not drawn at all — the old layout
+        # rendered a column per lifecycle stage, so four "empty" boxes sat
+        # beside the only populated one.
+        active_stages = [s for s in STATUS_PIPELINE_ORDER if by_status.get(s)]
+
+        summary = " · ".join(
+            f'<strong style="color:{NAVY};">{len(by_status[s])}</strong> '
+            f'{s.lower()}'
+            for s in active_stages
+        )
+
+        rows_html = ""
+        for s in active_stages:
+            bg, fg, border = STATUS_BADGE.get(
+                s, ("#f1f3f7", "#475569", "#94a3b8"))
+            for g in by_status[s]:
+                title = _safe(g.get("title") or "—")
                 pi = _safe(g.get("pi") or "—")
+                src = _safe(g.get("funding_source") or "")
+                college = _safe(g.get("college") or "")
                 amt = float(g.get("amount") or 0)
                 amt_label = _peso2(amt) if amt else "—"
-                src = _safe(g.get("funding_source") or "")
-                items_html += (
-                    f'<div style="padding:8px 10px;background:white;'
-                    f'border:1px solid #e8eaef;border-radius:6px;'
-                    f'margin-bottom:6px;font-size:12px;">'
-                    f'<div style="font-weight:600;color:{NAVY};line-height:1.3;'
-                    f'overflow:hidden;text-overflow:ellipsis;'
-                    f'white-space:nowrap;">{title or "—"}</div>'
-                    f'<div style="font-size:11px;color:#64748b;margin-top:2px;">'
-                    f'{pi} · {src}</div>'
-                    f'<div style="font-size:11px;margin-top:3px;">'
-                    f'<strong style="color:{NAVY};">{amt_label}</strong></div>'
+                meta = " · ".join(x for x in (pi, college, src) if x)
+                rows_html += (
+                    f'<div style="display:flex;align-items:center;gap:14px;'
+                    f'padding:11px 2px;border-top:1px solid #f1f3f7;">'
+                    f'<div style="flex:1;min-width:0;">'
+                    f'<div style="font-size:13px;font-weight:600;color:{NAVY};'
+                    f'line-height:1.35;">{title}</div>'
+                    f'<div style="font-size:11.5px;color:#64748b;'
+                    f'margin-top:2px;">{meta}</div>'
+                    f'</div>'
+                    f'<div style="text-align:right;flex-shrink:0;">'
+                    f'<div style="font-size:13.5px;font-weight:700;'
+                    f'color:{NAVY};white-space:nowrap;">{amt_label}</div>'
+                    f'</div>'
+                    f'<div style="flex-shrink:0;width:92px;text-align:right;">'
+                    f'<span style="display:inline-block;padding:3px 9px;'
+                    f'background:{bg};color:{fg};border:1px solid {border};'
+                    f'border-radius:999px;font-size:10px;font-weight:700;'
+                    f'text-transform:uppercase;letter-spacing:0.4px;'
+                    f'white-space:nowrap;">{s}</span>'
+                    f'</div>'
                     f'</div>'
                 )
-            if len(bag) > 8:
-                items_html += (
-                    f'<div style="text-align:center;font-size:11px;'
-                    f'color:#64748b;padding:4px;">+ {len(bag) - 8} more</div>'
-                )
-            if not items_html:
-                items_html = (
-                    f'<div style="text-align:center;color:#94a3b8;'
-                    f'font-size:11px;padding:8px;font-style:italic;">empty</div>'
-                )
-            pipeline_cols_html += (
-                f'<div style="flex:1;min-width:0;background:#fafafa;'
-                f'border:1px solid #e8eaef;border-radius:12px;padding:10px;">'
-                f'<div style="display:flex;align-items:center;'
-                f'justify-content:space-between;margin-bottom:8px;">'
-                f'<span style="display:inline-block;padding:3px 10px;'
-                f'background:{bg};color:{fg};border:1px solid {border};'
-                f'border-radius:12px;font-size:11px;font-weight:700;'
-                f'text-transform:uppercase;letter-spacing:0.4px;">{s}</span>'
-                f'<strong style="color:{NAVY};font-size:14px;">'
-                f'{len(bag)}</strong></div>'
-                f'{items_html}</div>'
-            )
 
         st.markdown(
             f'<div style="background:white;border:1px solid #e8eaef;'
-            f'border-radius:8px;padding:18px 22px;margin-top:14px;'
-            f'box-shadow:0 1px 2px rgba(15,23,42,0.04), 0 1px 3px rgba(15,23,42,0.03);">'
+            f'border-radius:12px;padding:16px 20px;margin-top:14px;'
+            f'box-shadow:0 1px 2px rgba(15,23,42,0.04), '
+            f'0 1px 3px rgba(15,23,42,0.03);">'
+            f'<div style="display:flex;justify-content:space-between;'
+            f'align-items:baseline;gap:10px;flex-wrap:wrap;">'
             f'<div style="font-size:12px;font-weight:700;color:#64748b;'
-            f'text-transform:uppercase;letter-spacing:0.5px;'
-            f'margin-bottom:10px;">Application status pipeline</div>'
-            f'<div style="display:flex;gap:10px;flex-wrap:wrap;">'
-            f'{pipeline_cols_html}</div>'
-            f'</div>',
+            f'text-transform:uppercase;letter-spacing:0.5px;">'
+            f'Applications</div>'
+            f'<div style="font-size:12px;color:#64748b;">{summary}</div>'
+            f'</div>'
+            f'{rows_html}</div>',
             unsafe_allow_html=True,
         )
 
