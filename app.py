@@ -98,6 +98,19 @@ QUARTILE_COLORS = {
 # the dashboard.
 CATEGORICAL_COLORS = BRAND_CHART_COLORS
 
+# =============================================================
+# INSTITUTION-LEVEL SCOPUS METRICS (manual override)
+# =============================================================
+# Taken from the Scopus institution profile, not computed from the rows in
+# `scopus_publications`. The table holds 82 records, which yield 342
+# citations and an h-index of 13 — well short of the institution figures,
+# because the local table is an incomplete extract.
+#
+# Update both numbers here when the Scopus profile is refreshed; every
+# page reads these constants, so there is one place to change.
+SCOPUS_TOTAL_CITATIONS = 1493
+SCOPUS_H_INDEX = 21
+
 st.markdown(f"""
 <style>
     /* ============================================================
@@ -1826,18 +1839,8 @@ if page == "Overview":
         )
 
     # ===== Compute additional metrics for KPI strip =====
-    cit_total = sum(int(p.get("citation_count") or 0) for p in scopus_data)
-    cit_total = 380  # manual override of total citations
-    cits_sorted = sorted(
-        [int(p.get("citation_count") or 0) for p in scopus_data],
-        reverse=True,
-    )
-    h_idx = 0
-    for i, c in enumerate(cits_sorted, start=1):
-        if c >= i:
-            h_idx = i
-        else:
-            break
+    cit_total = SCOPUS_TOTAL_CITATIONS   # institution figure, see constant
+    h_idx = SCOPUS_H_INDEX
 
     # Workshop average feedback
     avg_feedback = 0.0
@@ -2317,8 +2320,6 @@ if page == "Overview":
         year_counts = {}
         q_counts = {"Q1": 0, "Q2": 0, "Q3": 0, "Q4": 0, "NA": 0}
         oa_count = 0
-        cit_total = 0
-        citations_per_paper = []
         for p in scopus_data:
             y = p.get("year")
             if y:
@@ -2328,19 +2329,8 @@ if page == "Overview":
                 q_counts[q] += 1
             if p.get("open_access"):
                 oa_count += 1
-            c = int(p.get("citation_count") or 0)
-            cit_total += c
-            citations_per_paper.append(c)
-        cit_total = 380  # manual override of total citations
-
-        # h-index = largest n such that n papers have ≥n citations
-        citations_per_paper.sort(reverse=True)
-        h_index = 0
-        for i, c in enumerate(citations_per_paper, start=1):
-            if c >= i:
-                h_index = i
-            else:
-                break
+        cit_total = SCOPUS_TOTAL_CITATIONS   # institution figure
+        h_index = SCOPUS_H_INDEX
 
         total_pubs_all = len(scopus_data)
         years_sorted = sorted(year_counts.keys())
@@ -3372,16 +3362,8 @@ elif page == "Scopus Publications (view)":
                 f"🕒 Last updated: {last_ts.strftime('%d %b %Y, %H:%M')}"
             )
 
-        # ----- H-index calculation -----
-        h_index = 0
-        if "citation_count" in df.columns:
-            citations = (df["citation_count"].fillna(0).astype(int)
-                         .sort_values(ascending=False).tolist())
-            for i, c in enumerate(citations):
-                if c >= i + 1:
-                    h_index = i + 1
-                else:
-                    break
+        # H-index: institution figure, not computed from this table.
+        h_index = SCOPUS_H_INDEX
 
         # Summary metrics
         col1, col2, col3, col4, col5 = st.columns(5)
@@ -3390,7 +3372,7 @@ elif page == "Scopus Publications (view)":
                     int((df["quartile"] == "Q1").sum()) if "quartile" in df else 0)
         col3.metric("Open Access",
                     int(df["open_access"].sum()) if "open_access" in df else 0)
-        col4.metric("Total Citations", 380)  # manual override
+        col4.metric("Total Citations", SCOPUS_TOTAL_CITATIONS)
         col5.metric("H-index", h_index)
 
         # ---------- Shared chart styling ----------
