@@ -100,13 +100,41 @@ CATEGORICAL_COLORS = BRAND_CHART_COLORS
 
 st.markdown(f"""
 <style>
+    /* ============================================================
+       IROMS visual refresh
+       Design tokens first, then component styling. Brand colours are
+       unchanged (purple / navy / gold) — what changes is the surface
+       treatment, type scale, spacing rhythm and interaction states.
+       ============================================================ */
+    :root {{
+        --ink-1:      #0f172a;   /* primary text  */
+        --ink-2:      #475569;   /* secondary     */
+        --ink-3:      #94a3b8;   /* muted         */
+        --line:       #e8eaef;   /* hairline      */
+        --line-soft:  #f1f3f7;
+        --surface:    #ffffff;
+        --canvas:     #f6f7fa;
+        --radius:     12px;
+        --radius-sm:  8px;
+        /* Layered shadows read as depth; a single flat shadow reads as a box. */
+        --shadow-1:   0 1px 2px rgba(15,23,42,0.04), 0 1px 3px rgba(15,23,42,0.03);
+        --shadow-2:   0 2px 4px rgba(15,23,42,0.04), 0 4px 12px rgba(15,23,42,0.06);
+        --shadow-brand: 0 4px 14px rgba(91,33,182,0.18);
+    }}
+
     /* ===== PAGE BACKGROUND ===== */
     .stApp {{
-        background: #f4f6fa !important;
+        background: var(--canvas) !important;
+    }}
+
+    html, body, [class*="st-"], .stMarkdown, button, input, select, textarea {{
+        font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI",
+                     "Helvetica Neue", Arial, sans-serif !important;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
     }}
 
     /* ===== Force main content flush-left even when sidebar is collapsed ===== */
-    /* Streamlit reserves a sidebar slot even when hidden. Override it. */
     section[data-testid="stSidebar"][aria-expanded="false"] {{
         margin-left: -200px !important;
     }}
@@ -114,232 +142,232 @@ st.markdown(f"""
         margin-left: 0 !important;
     }}
 
-    /* Remove default Streamlit horizontal padding everywhere */
     .main .block-container,
     [data-testid="stMainBlockContainer"],
     .stMainBlockContainer,
     [data-testid="block-container"] {{
         padding-top: 0 !important;
-        padding-left: 0.5rem !important;
-        padding-right: 0.5rem !important;
+        padding-left: 1.25rem !important;
+        padding-right: 1.25rem !important;
         max-width: 100% !important;
         margin-left: 0 !important;
     }}
 
-    /* Push the main content area flush against the left edge */
     section.main, [data-testid="stMain"], .main {{
         padding-left: 0 !important;
         margin-left: 0 !important;
         max-width: 100% !important;
     }}
-
-    /* Streamlit's emotion-cache classes — catch-all for padding */
     div[class*="block-container"] {{
-        padding-left: 0.5rem !important;
+        padding-left: 1.25rem !important;
         max-width: 100% !important;
     }}
-    div[class^="st-emotion-cache"] > .main {{
-        padding-left: 0 !important;
-    }}
+    div[class^="st-emotion-cache"] > .main {{ padding-left: 0 !important; }}
+    .element-container, [data-testid="stVerticalBlock"] {{ margin-left: 0 !important; }}
 
-    /* Inner element containers */
-    .element-container, [data-testid="stVerticalBlock"] {{
-        margin-left: 0 !important;
-    }}
-
-    /* ===== HEADER — full-bleed, with logo + tagline ===== */
+    /* ===== HEADER ===== */
     .mcu-header {{
-        background: linear-gradient(135deg, {PURPLE} 0%, #4c1d95 100%);
+        background:
+            radial-gradient(1200px 180px at 12% -40%,
+                            rgba(255,255,255,0.16), transparent 70%),
+            linear-gradient(118deg, #4c1d95 0%, {PURPLE} 52%, #6d28d9 100%);
         color: white;
-        padding: 28px 32px 24px 32px;
-        border-bottom: 4px solid {GOLD};
-        margin: -3rem -0.5rem 20px -0.5rem;
-        box-shadow: 0 2px 12px rgba(91, 33, 182, 0.2);
+        padding: 30px 34px 26px 34px;
+        border-bottom: 3px solid {GOLD};
+        margin: -3rem -1.25rem 22px -1.25rem;
+        box-shadow: var(--shadow-brand);
         overflow: visible;
         position: relative;
     }}
-    /* Defaults — the inline styles in header_html override per-element */
-    .mcu-header h1 {{ color: white; margin: 0; }}
-    .mcu-header .subtitle {{ opacity: 0.9; }}
+    .mcu-header h1 {{
+        color: white; margin: 0;
+        letter-spacing: -0.4px; font-weight: 700;
+    }}
+    .mcu-header .subtitle {{ opacity: 0.88; letter-spacing: 0.1px; }}
 
-    /* ===== Hide the left sidebar entirely (identity moved to top-right) ===== */
+    /* ===== Hide the left sidebar entirely ===== */
     section[data-testid="stSidebar"] {{ display: none !important; }}
     [data-testid="collapsedControl"] {{ display: none !important; }}
 
-    /* ===== Log-out icon in the banner's bottom-right corner ===== */
+    /* ===== Log-out icon in the banner ===== */
     .banner-logout {{
-        position: absolute;
-        right: 20px;
-        bottom: 14px;
-        display: inline-flex;
-        align-items: center;
-        gap: 7px;
-        color: #fff !important;
-        opacity: 0.85;
+        position: absolute; right: 22px; bottom: 15px;
+        display: inline-flex; align-items: center; gap: 7px;
+        color: #fff !important; opacity: 0.82;
         text-decoration: none !important;
-        font-size: 12.5px;
-        font-weight: 600;
-        line-height: 1;
-        transition: opacity 0.15s ease, transform 0.15s ease;
+        font-size: 12.5px; font-weight: 600; line-height: 1;
+        padding: 5px 10px; border-radius: 999px;
+        background: rgba(255,255,255,0.10);
+        border: 1px solid rgba(255,255,255,0.16);
+        transition: opacity .15s ease, background .15s ease, transform .15s ease;
     }}
-    .banner-logout:hover {{ opacity: 1; transform: translateX(2px); }}
+    .banner-logout:hover {{
+        opacity: 1; background: rgba(255,255,255,0.18); transform: translateX(2px);
+    }}
     .banner-logout svg {{ display: block; }}
 
-    /* ===== "Forgot your password?" link below the sign-in tabs ===== */
-    .forgot-row {{ text-align: center; margin: 10px 0 2px 0; }}
+    /* ===== "Forgot your password?" link ===== */
+    .forgot-row {{ text-align: center; margin: 12px 0 2px 0; }}
     .forgot-link {{
-        color: {PURPLE};
-        font-size: 13px;
-        font-weight: 600;
-        text-decoration: none;
+        color: {PURPLE}; font-size: 13px; font-weight: 600;
+        text-decoration: none; border-bottom: 1px solid transparent;
+        transition: border-color .15s ease;
     }}
-    .forgot-link:hover {{ text-decoration: underline; }}
+    .forgot-link:hover {{ border-bottom-color: {PURPLE}; }}
 
-    /* ===== Download buttons — consistent brand purple everywhere ===== */
+    /* ===== Download buttons ===== */
     [data-testid="stDownloadButton"] button {{
         background-color: {PURPLE} !important;
         border: 1px solid {PURPLE} !important;
         color: #ffffff !important;
+        border-radius: var(--radius-sm) !important;
+        font-weight: 600 !important;
+        box-shadow: var(--shadow-1) !important;
+        transition: background .15s ease, transform .1s ease !important;
     }}
     [data-testid="stDownloadButton"] button p,
-    [data-testid="stDownloadButton"] button div {{
-        color: #ffffff !important;
-    }}
-    [data-testid="stDownloadButton"] button:hover,
-    [data-testid="stDownloadButton"] button:active,
-    [data-testid="stDownloadButton"] button:focus {{
+    [data-testid="stDownloadButton"] button div {{ color: #ffffff !important; }}
+    [data-testid="stDownloadButton"] button:hover {{
         background-color: #4c1d95 !important;
         border-color: #4c1d95 !important;
-        color: #ffffff !important;
-        box-shadow: none !important;
+        transform: translateY(-1px);
     }}
+    [data-testid="stDownloadButton"] button:active {{ transform: translateY(0); }}
 
-    /* ===== KPI / SECTION CARDS — wrap Streamlit columns in card-style frames ===== */
-    /* Apply card styling to columns rows that look like KPI tiles */
-    [data-testid="stHorizontalBlock"] [data-testid="stVerticalBlock"] > [data-testid="stElementContainer"] {{
-        /* leave default — too aggressive otherwise */
-    }}
-
-    /* Style metric containers as cards */
+    /* ===== METRIC CARDS ===== */
     [data-testid="stMetric"] {{
-        background: white;
-        border: 1px solid #e5e7eb;
-        border-radius: 8px;
-        padding: 14px 16px;
-        box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        padding: 16px 18px;
+        box-shadow: var(--shadow-1);
+        position: relative;
+        overflow: hidden;
+        transition: box-shadow .18s ease, transform .18s ease,
+                    border-color .18s ease;
+    }}
+    /* A hairline of brand colour down the left edge ties tiles to the header. */
+    [data-testid="stMetric"]::before {{
+        content: ""; position: absolute; left: 0; top: 0; bottom: 0;
+        width: 3px;
+        background: linear-gradient(180deg, {PURPLE} 0%, #7c3aed 100%);
+        opacity: 0.85;
+    }}
+    [data-testid="stMetric"]:hover {{
+        box-shadow: var(--shadow-2);
+        transform: translateY(-1px);
+        border-color: #dcdfe7;
     }}
     [data-testid="stMetricLabel"] {{
-        white-space: normal !important;
-        overflow: visible !important;
+        white-space: normal !important; overflow: visible !important;
         line-height: 1.3 !important;
     }}
     [data-testid="stMetricLabel"] p {{
-        font-size: 11px !important;
-        color: #6b7280 !important;
+        font-size: 10.5px !important;
+        color: var(--ink-3) !important;
         text-transform: uppercase !important;
-        letter-spacing: 0.5px !important;
-        font-weight: 600 !important;
+        letter-spacing: 0.7px !important;
+        font-weight: 700 !important;
         white-space: normal !important;
         overflow-wrap: break-word !important;
     }}
     [data-testid="stMetricValue"] {{
         color: {NAVY} !important;
-        font-size: 24px !important;
+        font-size: 26px !important;
         font-weight: 700 !important;
-        line-height: 1.15 !important;
+        line-height: 1.1 !important;
+        letter-spacing: -0.6px !important;
     }}
 
-    /* KPI labels & values when used outside st.metric */
+    /* KPI labels & values outside st.metric */
     .kpi-label {{
-        font-size: 11px; color: #6b7280; text-transform: uppercase;
-        letter-spacing: 0.5px; font-weight: 600; margin-bottom: 4px;
+        font-size: 10.5px; color: var(--ink-3); text-transform: uppercase;
+        letter-spacing: 0.7px; font-weight: 700; margin-bottom: 4px;
     }}
-    .kpi-value {{ font-size: 24px; font-weight: 700; color: {NAVY}; margin: 4px 0; line-height: 1.15; }}
-    .delta-up {{ color: {GREEN}; font-size: 12px; font-weight: 500; }}
-    .delta-down {{ color: {RED}; font-size: 12px; font-weight: 500; }}
+    .kpi-value {{
+        font-size: 26px; font-weight: 700; color: {NAVY};
+        margin: 4px 0; line-height: 1.1; letter-spacing: -0.6px;
+    }}
+    .delta-up {{ color: {GREEN}; font-size: 12px; font-weight: 600; }}
+    .delta-down {{ color: {RED}; font-size: 12px; font-weight: 600; }}
 
     /* ===== SECTION HEADING ===== */
     .section-heading {{
-        font-size: 15px;
+        font-size: 14px;
         color: {NAVY};
         font-weight: 700;
-        border-left: 4px solid {GOLD};
-        padding-left: 12px;
-        margin: 22px 0 14px 0;
-        letter-spacing: 0.4px;
+        padding-left: 13px;
+        margin: 26px 0 14px 0;
+        letter-spacing: 0.6px;
         text-transform: uppercase;
+        position: relative;
+        line-height: 1.4;
+    }}
+    .section-heading::before {{
+        content: ""; position: absolute; left: 0; top: 2px; bottom: 2px;
+        width: 4px; border-radius: 3px;
+        background: linear-gradient(180deg, {GOLD} 0%, #b8902a 100%);
     }}
 
-    /* ===== FORM WIDGET LABELS (text_input, selectbox, date_input, etc.) ===== */
+    /* ===== FORM WIDGET LABELS ===== */
     [data-testid="stWidgetLabel"],
     [data-testid="stWidgetLabel"] p,
     [data-testid="stWidgetLabel"] *,
     label[data-testid="stWidgetLabel"],
     [data-baseweb="form-control-label"],
-    .stTextInput > label,
-    .stSelectbox > label,
-    .stDateInput > label,
-    .stTextArea > label,
-    .stNumberInput > label,
-    .stMultiSelect > label,
-    .stRadio > label,
-    .stCheckbox > label,
-    .stFileUploader > label,
-    .stColorPicker > label,
-    .stSlider > label,
-    .stTimeInput > label,
+    .stTextInput > label, .stSelectbox > label, .stDateInput > label,
+    .stTextArea > label, .stNumberInput > label, .stMultiSelect > label,
+    .stRadio > label, .stCheckbox > label, .stFileUploader > label,
+    .stColorPicker > label, .stSlider > label, .stTimeInput > label,
     .stToggle > label {{
         font-size: 12.5px !important;
         line-height: 1.5 !important;
         margin-bottom: 8px !important;
         padding-bottom: 0 !important;
         font-weight: 600 !important;
-        color: #374151 !important;
+        color: var(--ink-2) !important;
         white-space: normal !important;
         overflow-wrap: break-word !important;
         word-wrap: break-word !important;
         display: block !important;
     }}
 
-    /* Force the actual form widget container to claim its full vertical
-       space so the label can't sit on top of the input below. */
-    [data-testid="stTextInput"],
-    [data-testid="stNumberInput"],
-    [data-testid="stTextArea"],
-    [data-testid="stSelectbox"],
-    [data-testid="stDateInput"],
-    [data-testid="stTimeInput"],
-    [data-testid="stMultiSelect"],
-    [data-testid="stFileUploader"],
-    [data-testid="stRadio"],
-    [data-testid="stCheckbox"],
+    [data-testid="stTextInput"], [data-testid="stNumberInput"],
+    [data-testid="stTextArea"], [data-testid="stSelectbox"],
+    [data-testid="stDateInput"], [data-testid="stTimeInput"],
+    [data-testid="stMultiSelect"], [data-testid="stFileUploader"],
+    [data-testid="stRadio"], [data-testid="stCheckbox"],
     [data-testid="stSlider"] {{
         margin-bottom: 12px !important;
     }}
 
-    /* Stacked form widgets get an extra gap so labels never bleed up */
     [data-testid="stForm"] [data-testid="stElementContainer"],
     [data-testid="stVerticalBlock"] > [data-testid="stElementContainer"] {{
         margin-bottom: 6px !important;
     }}
 
-    /* ===== HORIZONTAL RADIO (submit / edit toggle) ===== */
+    /* ===== FORMS ===== */
+    [data-testid="stForm"] {{
+        background: var(--surface);
+        border: 1px solid var(--line) !important;
+        border-radius: var(--radius) !important;
+        padding: 20px 22px !important;
+        box-shadow: var(--shadow-1);
+    }}
+
+    /* ===== HORIZONTAL RADIO ===== */
     [data-testid="stRadio"] [role="radiogroup"] {{
-        gap: 18px !important;
-        flex-wrap: wrap !important;
-        align-items: center !important;
-        padding: 4px 0 !important;
+        gap: 18px !important; flex-wrap: wrap !important;
+        align-items: center !important; padding: 4px 0 !important;
     }}
     [data-testid="stRadio"] [role="radiogroup"] label,
     [data-testid="stRadio"] [role="radiogroup"] label p,
     [data-testid="stRadio"] [role="radiogroup"] label span {{
-        padding: 6px 4px !important;
-        line-height: 1.5 !important;
-        font-size: 13px !important;
-        white-space: normal !important;
+        padding: 6px 4px !important; line-height: 1.5 !important;
+        font-size: 13px !important; white-space: normal !important;
     }}
 
-    /* Selectbox + date_input + text_input inner text comfort */
+    /* ===== INPUT SURFACES ===== */
     [data-testid="stTextInput"] input,
     [data-testid="stNumberInput"] input,
     [data-testid="stTextArea"] textarea,
@@ -349,98 +377,138 @@ st.markdown(f"""
     [data-testid="stMultiSelect"] div[role="combobox"] {{
         font-size: 13.5px !important;
         line-height: 1.5 !important;
-        min-height: 38px !important;
+        min-height: 40px !important;
+        border-radius: var(--radius-sm) !important;
     }}
-
-    /* Textarea needs taller height */
-    [data-testid="stTextArea"] textarea {{
-        min-height: 80px !important;
+    [data-testid="stTextInput"] div[data-baseweb="input"],
+    [data-testid="stNumberInput"] div[data-baseweb="input"],
+    [data-testid="stTextArea"] div[data-baseweb="textarea"] {{
+        border-radius: var(--radius-sm) !important;
+        transition: box-shadow .15s ease, border-color .15s ease;
     }}
+    [data-testid="stTextInput"] div[data-baseweb="input"]:focus-within,
+    [data-testid="stNumberInput"] div[data-baseweb="input"]:focus-within,
+    [data-testid="stTextArea"] div[data-baseweb="textarea"]:focus-within {{
+        box-shadow: 0 0 0 3px rgba(91,33,182,0.14) !important;
+        border-color: {PURPLE} !important;
+    }}
+    [data-testid="stTextArea"] textarea {{ min-height: 80px !important; }}
 
-    /* Captions (st.caption) — used to describe sections */
+    /* ===== CAPTIONS ===== */
     [data-testid="stCaptionContainer"],
     [data-testid="stCaptionContainer"] p,
     .stCaption, [data-testid="stCaption"] {{
         font-size: 12.5px !important;
-        line-height: 1.5 !important;
-        color: #6b7280 !important;
+        line-height: 1.55 !important;
+        color: var(--ink-2) !important;
         margin-bottom: 10px !important;
     }}
 
-    /* Buttons — make sure submit buttons don't overlap inputs above them */
-    [data-testid="stFormSubmitButton"],
-    [data-testid="stButton"] {{
-        margin-top: 6px !important;
-        margin-bottom: 4px !important;
+    /* ===== BUTTONS ===== */
+    [data-testid="stFormSubmitButton"], [data-testid="stButton"] {{
+        margin-top: 6px !important; margin-bottom: 4px !important;
     }}
     [data-testid="stFormSubmitButton"] button,
     [data-testid="stButton"] button {{
         line-height: 1.4 !important;
         white-space: normal !important;
+        border-radius: var(--radius-sm) !important;
+        font-weight: 600 !important;
+        transition: background .15s ease, transform .1s ease,
+                    box-shadow .15s ease !important;
     }}
-
-    /* Expander headers — they were cramped too */
-    [data-testid="stExpander"] summary,
-    .streamlit-expanderHeader {{
-        font-size: 14px !important;
-        line-height: 1.5 !important;
-        padding: 10px 12px !important;
-    }}
-
-    /* ===== DATAFRAMES — clean white card look ===== */
-    [data-testid="stDataFrame"] {{
-        background: white;
-        border: 1px solid #e5e7eb;
-        border-radius: 8px;
-        padding: 4px;
-        box-shadow: 0 1px 2px rgba(0,0,0,0.03);
-    }}
-
-    /* ===== PLOTLY CHARTS — card-wrap ===== */
-    [data-testid="stPlotlyChart"] {{
-        background: white;
-        border: 1px solid #e5e7eb;
-        border-radius: 8px;
-        padding: 8px 4px;
-        box-shadow: 0 1px 2px rgba(0,0,0,0.03);
-    }}
-
-    /* Tighten bold markdown subheading look */
-    .stMarkdown p strong:first-child {{
-        color: {NAVY};
-    }}
-
-    /* ===== INFO/SUCCESS/WARNING/ERROR boxes ===== */
-    [data-testid="stAlert"] {{
-        border-radius: 8px;
-        border-left-width: 4px;
-    }}
-
-    /* ===== BUTTONS ===== */
     [data-testid="stBaseButton-primary"] {{
         background: {PURPLE} !important;
         color: white !important;
         border: none !important;
-        border-radius: 6px !important;
+        border-radius: var(--radius-sm) !important;
         font-weight: 600 !important;
+        box-shadow: 0 2px 6px rgba(91,33,182,0.22) !important;
     }}
     [data-testid="stBaseButton-primary"]:hover {{
         background: #4c1d95 !important;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(91,33,182,0.28) !important;
+    }}
+    [data-testid="stBaseButton-primary"]:active {{ transform: translateY(0); }}
+    [data-testid="stBaseButton-secondary"] {{
+        border-radius: var(--radius-sm) !important;
+        border: 1px solid var(--line) !important;
+        background: var(--surface) !important;
+        color: var(--ink-1) !important;
+        font-weight: 600 !important;
+    }}
+    [data-testid="stBaseButton-secondary"]:hover {{
+        border-color: {PURPLE} !important;
+        color: {PURPLE} !important;
     }}
 
     /* ===== EXPANDER ===== */
     [data-testid="stExpander"] {{
-        background: white;
-        border: 1px solid #e5e7eb;
-        border-radius: 8px;
-        box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        box-shadow: var(--shadow-1);
+        overflow: hidden;
+    }}
+    [data-testid="stExpander"] summary,
+    .streamlit-expanderHeader {{
+        font-size: 13.5px !important;
+        font-weight: 600 !important;
+        line-height: 1.5 !important;
+        padding: 12px 14px !important;
+        color: {NAVY} !important;
+    }}
+    [data-testid="stExpander"] summary:hover {{ background: var(--line-soft); }}
+
+    /* ===== DATAFRAMES ===== */
+    [data-testid="stDataFrame"] {{
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        padding: 6px;
+        box-shadow: var(--shadow-1);
     }}
 
-    /* ===== TOP NAV DROPDOWN — make it look prominent ===== */
+    /* ===== PLOTLY CHARTS ===== */
+    [data-testid="stPlotlyChart"] {{
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        padding: 10px 6px;
+        box-shadow: var(--shadow-1);
+    }}
+
+    .stMarkdown p strong:first-child {{ color: {NAVY}; }}
+
+    /* ===== TABS ===== */
+    [data-testid="stTabs"] [data-baseweb="tab-list"] {{
+        gap: 4px;
+        border-bottom: 1px solid var(--line);
+    }}
+    [data-testid="stTabs"] [data-baseweb="tab"] {{
+        font-size: 13.5px; font-weight: 600;
+        color: var(--ink-2);
+        border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+        padding: 8px 16px;
+    }}
+    [data-testid="stTabs"] [aria-selected="true"] {{
+        color: {PURPLE} !important;
+        background: rgba(91,33,182,0.06);
+    }}
+
+    /* ===== ALERTS ===== */
+    [data-testid="stAlert"] {{
+        border-radius: var(--radius);
+        border-left-width: 4px;
+        box-shadow: var(--shadow-1);
+        font-size: 13.5px;
+    }}
+
+    /* ===== TOP NAV DROPDOWN ===== */
     [data-testid="stSelectbox"] [data-baseweb="select"] {{
-        background: white;
-        border: 2px solid {PURPLE};
-        border-radius: 6px;
+        background: var(--surface);
+        border-radius: var(--radius-sm);
         font-weight: 600;
     }}
 
@@ -449,7 +517,20 @@ st.markdown(f"""
     #MainMenu, footer, .stDeployButton {{ display: none !important; }}
 
     /* ===== DIVIDER ===== */
-    hr {{ border-color: #e5e7eb !important; margin: 16px 0 !important; }}
+    hr {{
+        border: none !important;
+        border-top: 1px solid var(--line) !important;
+        margin: 20px 0 !important;
+    }}
+
+    /* ===== SCROLLBAR ===== */
+    ::-webkit-scrollbar {{ width: 10px; height: 10px; }}
+    ::-webkit-scrollbar-track {{ background: transparent; }}
+    ::-webkit-scrollbar-thumb {{
+        background: #cfd4de; border-radius: 999px;
+        border: 2px solid var(--canvas);
+    }}
+    ::-webkit-scrollbar-thumb:hover {{ background: #b6bcc9; }}
 </style>
 """, unsafe_allow_html=True)
 
@@ -527,17 +608,72 @@ def clear_session_cookie():
         pass
 
 
+class AllowlistUnavailable(Exception):
+    """The allowlist could not be read — the database is unreachable."""
+
+
 def get_allowed_user(email: str) -> Optional[Dict]:
-    """Look up the email in the allowlist. Returns user record if found and active."""
-    if sb is None or not email:
+    """Look up the email in the allowlist.
+
+    Returns the user record if found and active, or None if the email is
+    genuinely not on the list. Raises AllowlistUnavailable if the database
+    cannot be reached.
+
+    The distinction matters: this function used to swallow connection errors
+    and return None, so a paused Supabase project told every user their email
+    wasn't on the allowlist — an account problem they could do nothing about.
+    """
+    if not email:
         return None
+    if sb is None:
+        raise AllowlistUnavailable("Database not configured.")
     try:
         res = sb.table("allowed_users").select("*")\
                 .eq("email", email.lower().strip())\
                 .eq("active", True).limit(1).execute()
-        return res.data[0] if res.data else None
-    except Exception:
-        return None
+    except Exception as e:
+        raise AllowlistUnavailable(str(e)) from e
+    return res.data[0] if res.data else None
+
+
+# ============================================================
+# STORAGE KEY SANITISER
+# ============================================================
+import unicodedata as _ud
+
+
+def safe_filename(name: str) -> str:
+    """Make an uploaded filename safe to use in a Supabase Storage key.
+
+    Supabase rejects keys containing non-ASCII characters with
+    `InvalidKey`, so a file named e.g. "Minutes – August.pdf" (en-dash,
+    as Word inserts it) fails to upload while the metadata row still
+    saves — leaving a record whose Download/View links point at nothing.
+
+    Smart punctuation is folded to its ASCII equivalent and accents are
+    stripped; spaces, dots, dashes and parentheses are kept so keys stay
+    readable and consistent with files already in the bucket.
+    """
+    if not name:
+        return "file"
+
+    # Word/Google Docs smart punctuation -> ASCII
+    for bad, good in (("–", "-"), ("—", "-"), ("‒", "-"),
+                      ("‘", "'"), ("’", "'"),
+                      ("“", '"'), ("”", '"'),
+                      ("…", "..."), (" ", " ")):
+        name = name.replace(bad, good)
+
+    # Strip accents (é -> e), then drop anything still non-ASCII
+    name = _ud.normalize("NFKD", name)
+    name = name.encode("ascii", "ignore").decode("ascii")
+
+    # Keep a conservative, filesystem- and URL-friendly character set
+    name = "".join(c if (c.isalnum() or c in " ._-()[],&+") else "_"
+                   for c in name)
+
+    name = " ".join(name.split()).strip(" .")
+    return name or "file"
 
 
 # ============================================================
@@ -752,7 +888,16 @@ def show_login_screen():
             submit = st.form_submit_button("Log In", type="primary")
 
             if submit:
-                allowed = get_allowed_user(email)
+                try:
+                    allowed = get_allowed_user(email)
+                except AllowlistUnavailable:
+                    st.error(
+                        "❌ Can't reach the IROMS database right now, so your "
+                        "login can't be checked. This is a server problem, "
+                        "not your account — please try again in a few "
+                        "minutes. If it keeps happening, the Supabase "
+                        "project may be paused.")
+                    st.stop()
                 if not allowed:
                     st.error("❌ Your email is not on the IRO allowlist. "
                              "Contact the IRO Director to be added.")
@@ -789,7 +934,17 @@ def show_login_screen():
                 except Exception as e:
                     msg = str(e)
                     if "Invalid login" in msg or "invalid_credentials" in msg.lower():
-                        st.error("❌ Incorrect password.")
+                        # Supabase returns the same code whether the password
+                        # is wrong or the account was never created, so name
+                        # both possibilities rather than only the password.
+                        st.error(
+                            "❌ Your email is on the allowlist, but sign-in "
+                            "failed. Either the password is incorrect, or "
+                            "you haven't created your account yet — being "
+                            "added to the allowlist does not create a login. "
+                            "If you've never signed in before, use the "
+                            "**🆕 First-Time Sign Up** tab above to set your "
+                            "password.")
                     else:
                         st.error(f"❌ Login failed: {msg}")
 
@@ -822,7 +977,14 @@ def show_login_screen():
                     if not reset_email or "@" not in reset_email:
                         st.error("❌ Enter a valid email address.")
                     else:
-                        allowed = get_allowed_user(reset_email)
+                        try:
+                            allowed = get_allowed_user(reset_email)
+                        except AllowlistUnavailable:
+                            st.error(
+                                "❌ Can't reach the IROMS database right now. "
+                                "This is a server problem, not your account — "
+                                "please try again in a few minutes.")
+                            st.stop()
                         if not allowed:
                             st.error(
                                 "❌ This email isn't on the IRO allowlist. "
@@ -866,7 +1028,14 @@ def show_login_screen():
                 if len(password) < 8:
                     st.error("❌ Password must be at least 8 characters.")
                     st.stop()
-                allowed = get_allowed_user(email)
+                try:
+                    allowed = get_allowed_user(email)
+                except AllowlistUnavailable:
+                    st.error(
+                        "❌ Can't reach the IROMS database right now. This is "
+                        "a server problem, not your account — please try "
+                        "again in a few minutes.")
+                    st.stop()
                 if not allowed:
                     st.error("❌ Your email is not on the IRO allowlist. "
                              "Contact the IRO Director to be added.")
@@ -1258,35 +1427,37 @@ selected_group = option_menu(
     key="group_nav",
     styles={
         "container": {
-            "padding": "6px",
+            "padding": "7px",
             "background-color": "white",
-            "border": "1px solid #e5e7eb",
-            "border-radius": "10px",
-            "margin-bottom": "10px",
-            "box-shadow": "0 1px 3px rgba(15,23,42,0.05)",
+            "border": "1px solid #e8eaef",
+            "border-radius": "14px",
+            "margin-bottom": "12px",
+            "box-shadow": "0 1px 2px rgba(15,23,42,0.04), "
+                          "0 4px 12px rgba(15,23,42,0.05)",
         },
-        "icon": {"color": "#9ca3af", "font-size": "18px"},
+        "icon": {"color": "#94a3b8", "font-size": "17px"},
         "nav-link": {
-            "font-size": "14px",
+            "font-size": "13.5px",
             "font-weight": "600",
-            "color": "#6b7280",
+            "color": "#475569",
             "text-align": "center",
-            "margin": "0 4px",
+            "margin": "0 3px",
             "padding": "10px 18px",
-            "border-radius": "8px",
+            "border-radius": "10px",
             "background-color": "transparent",
-            "border": "2px solid transparent",
-            "--hover-color": "#f4f6fa",
-            "letter-spacing": "0.2px",
+            "border": "1px solid transparent",
+            "--hover-color": "#f1f3f7",
+            "letter-spacing": "0.1px",
             "white-space": "nowrap",
-            "transition": "all 0.15s ease",
+            "transition": "all 0.18s ease",
         },
         "nav-link-selected": {
             "background-color": NAVY,
             "color": "white",
             "font-weight": "700",
-            "border": f"2px solid {GOLD}",
-            "box-shadow": f"0 2px 6px rgba(11,37,69,0.25)",
+            "border": "1px solid " + NAVY,
+            "border-bottom": f"2px solid {GOLD}",
+            "box-shadow": "0 2px 8px rgba(11,37,69,0.22)",
         },
     },
 )
@@ -1303,11 +1474,11 @@ if len(pages_in_group) > 1:
         styles={
             "container": {
                 "padding": "5px",
-                "background-color": "#f4f6fa",
-                "border": "1px solid #e5e7eb",
-                "border-radius": "8px",
-                "margin-bottom": "16px",
-                "box-shadow": "inset 0 1px 2px rgba(15,23,42,0.04)",
+                "background-color": "#eef0f5",
+                "border": "1px solid #e4e7ee",
+                "border-radius": "11px",
+                "margin-bottom": "18px",
+                "box-shadow": "inset 0 1px 2px rgba(15,23,42,0.05)",
             },
             "icon": {"font-size": "0px"},   # hide icons in sub-menu
             "nav-link": {
@@ -1327,10 +1498,10 @@ if len(pages_in_group) > 1:
             },
             "nav-link-selected": {
                 "background-color": "white",
-                "color": NAVY,
+                "color": PURPLE,
                 "font-weight": "700",
                 "border-bottom": f"2px solid {GOLD}",
-                "box-shadow": "0 1px 3px rgba(15,23,42,0.08)",
+                "box-shadow": "0 1px 3px rgba(15,23,42,0.10)",
             },
         },
     )
@@ -4333,7 +4504,7 @@ elif page == "Manage Workshops":
                             st.error("Couldn't locate that workshop in the database.")
                         else:
                             ws = matched[0]
-                            fname = feedback_file.name
+                            fname = safe_filename(feedback_file.name)
                             ts = datetime.now().strftime("%Y%m%dT%H%M%S")
                             storage_path = f"workshop-feedback/{ws['id']}/{ts}_{fname}"
                             file_bytes = feedback_file.getvalue()
@@ -4786,7 +4957,7 @@ elif page == "In-House Journal Publications":
                             fl_pdf_name = None
                             fl_ok = True
                             if fl_upload_pdf is not None:
-                                fl_pdf_name = fl_upload_pdf.name
+                                fl_pdf_name = safe_filename(fl_upload_pdf.name)
                                 ts = datetime.now().strftime("%Y%m%dT%H%M%S")
                                 slug = "".join(c if c.isalnum() else "-"
                                                for c in fl_journal_name)[:32]
@@ -4984,7 +5155,7 @@ elif page == "In-House Journal Publications":
                             new_path = fei.get("pdf_storage_path")
                             new_name = fei.get("pdf_filename")
                             if fe_pdf is not None:
-                                new_name = fe_pdf.name
+                                new_name = safe_filename(fe_pdf.name)
                                 ts = datetime.now().strftime("%Y%m%dT%H%M%S")
                                 slug = "".join(c if c.isalnum() else "-"
                                                for c in fe_journal)[:32]
@@ -5194,7 +5365,7 @@ elif page == "In-House Journal Publications":
                         upload_ok = True
 
                         if upload_pdf is not None:
-                            pdf_filename = upload_pdf.name
+                            pdf_filename = safe_filename(upload_pdf.name)
                             ts = datetime.now().strftime("%Y%m%dT%H%M%S")
                             pdf_storage_path = (
                                 f"mcu-journal/vol{volume}-iss{issue}/{ts}_{pdf_filename}"
@@ -5352,7 +5523,7 @@ elif page == "In-House Journal Publications":
                             new_pdf_path = ei.get("pdf_storage_path")
                             new_pdf_name = ei.get("pdf_filename")
                             if e_pdf is not None:
-                                new_pdf_name = e_pdf.name
+                                new_pdf_name = safe_filename(e_pdf.name)
                                 ts = datetime.now().strftime("%Y%m%dT%H%M%S")
                                 new_pdf_path = (
                                     f"mcu-journal/vol{e_vol}-iss{e_iss}/"
@@ -5532,7 +5703,7 @@ elif page == "IRO Policies":
                 else:
                     file_storage_path = None
                     upload_ok = True
-                    p_filename = p_file.name
+                    p_filename = safe_filename(p_file.name)
                     ts = datetime.now().strftime("%Y%m%dT%H%M%S")
                     slug = "".join(c if c.isalnum() else "-"
                                    for c in p_type)[:32].strip("-")
@@ -5663,7 +5834,7 @@ elif page == "IRO Policies":
                         new_name = ep.get("file_filename")
                         upload_ok = True
                         if ep_replace_file is not None:
-                            new_name = ep_replace_file.name
+                            new_name = safe_filename(ep_replace_file.name)
                             ts = datetime.now().strftime("%Y%m%dT%H%M%S")
                             slug = "".join(c if c.isalnum() else "-"
                                            for c in ep_type)[:32].strip("-")
@@ -6006,7 +6177,7 @@ elif page == "IRO Presentations & Reports":
             if not all([title, doc_type, uploaded_by, uploaded_file]):
                 st.error("Please fill required fields and attach a file.")
             else:
-                fname = uploaded_file.name
+                fname = safe_filename(uploaded_file.name)
                 ts = datetime.now().strftime("%Y%m%dT%H%M%S")
                 safe_type = doc_type.lower().replace(" ", "-")
                 storage_path = f"iro-library/{safe_type}/{ts}_{fname}"
@@ -7045,7 +7216,8 @@ elif page == "IRO Meetings":
                 if m_doc is not None and sb is not None:
                     try:
                         ts = datetime.now().strftime("%Y%m%dT%H%M%S")
-                        doc_path = f"meeting-minutes/{m_date}_{ts}_{m_doc.name}"
+                        doc_path = (f"meeting-minutes/{m_date}_{ts}_"
+                                    f"{safe_filename(m_doc.name)}")
                         # Guess content-type from filename if Streamlit
                         # didn't supply one — important so PDFs/images
                         # render inline when "Open" is clicked.
@@ -7436,7 +7608,8 @@ elif page == "Submit CRC Monthly Report":
                         _ts = datetime.now().strftime("%Y%m%dT%H%M%S")
                         crc_doc_path = (f"crc-reports/{int(r_year)}-"
                                         f"{_months.index(r_month):02d}_{college}_"
-                                        f"{_ts}_{completed_form.name}")
+                                        f"{_ts}_"
+                                        f"{safe_filename(completed_form.name)}")
                         _ctype = (completed_form.type
                                   or _mt.guess_type(completed_form.name)[0]
                                   or "application/octet-stream")
@@ -7726,7 +7899,8 @@ elif page == "In-house grants":
                             try:
                                 import mimetypes as _mt
                                 _ts = datetime.now().strftime("%Y%m%dT%H%M%S")
-                                _adoc = f"in-house-grants/{_ts}_{_afile.name}"
+                                _adoc = (f"in-house-grants/{_ts}_"
+                                         f"{safe_filename(_afile.name)}")
                                 _ct = (_afile.type
                                        or _mt.guess_type(_afile.name)[0]
                                        or "application/octet-stream")

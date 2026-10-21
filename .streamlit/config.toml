@@ -1,0 +1,12 @@
+# IROMS native Streamlit theme.
+# Without this file Streamlit uses its default red accent, which collides with
+# the MCU purple on every slider, checkbox, radio, link and progress bar.
+[theme]
+primaryColor = "#5b21b6"
+backgroundColor = "#ffffff"
+secondaryBackgroundColor = "#f6f7fa"
+textColor = "#0f172a"
+font = "sans serif"
+
+[client]
+toolbarMode = "minimal"
