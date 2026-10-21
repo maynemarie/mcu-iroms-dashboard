@@ -127,11 +127,35 @@ st.markdown(f"""
         background: var(--canvas) !important;
     }}
 
-    html, body, [class*="st-"], .stMarkdown, button, input, select, textarea {{
+    html, body,
+    [class*="st-"]:not([data-testid="stIconMaterial"]),
+    .stMarkdown, button, input, select, textarea {{
         font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI",
                      "Helvetica Neue", Arial, sans-serif !important;
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;
+    }}
+
+    /* Icon glyphs must keep their icon font.
+       Streamlit draws icons as *ligatures*: the span literally contains the
+       text "keyboard_arrow_right" and the Material Symbols font renders it
+       as an arrow. Any blanket font-family override turns that back into
+       visible text, which then overflows its span and overprints the
+       neighbouring label. This rule is placed after the one above so it
+       wins at equal specificity — keep it there. */
+    [data-testid="stIconMaterial"],
+    span.material-icons, span.material-icons-outlined,
+    span.material-symbols-rounded, span.material-symbols-outlined,
+    [class*="material-symbols"], [class*="material-icons"] {{
+        font-family: "Material Symbols Rounded", "Material Symbols Outlined",
+                     "Material Icons", "Material Icons Outlined" !important;
+        font-feature-settings: "liga" !important;
+        -webkit-font-feature-settings: "liga" !important;
+        font-variant-ligatures: common-ligatures !important;
+        letter-spacing: normal !important;
+        text-transform: none !important;
+        white-space: nowrap;
+        overflow: hidden;
     }}
 
     /* ===== Force main content flush-left even when sidebar is collapsed ===== */
