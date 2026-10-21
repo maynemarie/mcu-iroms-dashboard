@@ -2484,34 +2484,71 @@ if page == "Overview":
     st.markdown(progress_html, unsafe_allow_html=True)
 
     if grants_db:
-        # Sort colleges by amount descending, build clean HTML bar-rows
+        # Share of the in-house grant pot by college — part-to-whole, so a
+        # donut rather than ranked bars. Colours come from the shared
+        # categorical sequence, assigned by college so a college keeps its
+        # hue across the dashboard.
         sorted_cols = sorted(by_col_amt.items(), key=lambda x: -x[1])
-        max_amt = max(amt for _, amt in sorted_cols) or 1
-        bar_rows_html = ""
-        for i, (c, amt) in enumerate(sorted_cols):
-            color = CATEGORICAL_COLORS[i % len(CATEGORICAL_COLORS)]
-            pct = amt / max_amt * 100
-            n = by_col_cnt[c]
-            bar_rows_html += (
-                f'<div style="display:flex;align-items:center;margin:10px 0;'
-                f'font-size:14px;">'
-                f'<div style="width:170px;color:#374151;font-weight:600;'
-                f'flex-shrink:0;padding-right:12px;overflow:hidden;'
-                f'text-overflow:ellipsis;white-space:nowrap;">{c}</div>'
-                f'<div style="flex:1;background:#f3f4f6;height:20px;'
-                f'border-radius:4px;position:relative;overflow:hidden;">'
-                f'<div style="width:{pct}%;height:100%;background:{color};'
-                f'border-radius:4px;"></div></div>'
-                f'<div style="width:160px;text-align:right;color:#6b7280;'
-                f'padding-left:12px;flex-shrink:0;">'
-                f'<strong style="color:{NAVY};">₱{amt:,.0f}</strong>'
-                f' · {n} grant{"s" if n != 1 else ""}</div>'
-                f'</div>'
-            )
+        col_total = sum(amt for _, amt in sorted_cols) or 1
+
+        pie_labels = [c for c, _ in sorted_cols]
+        pie_values = [amt for _, amt in sorted_cols]
+        pie_colors = [CATEGORICAL_COLORS[i % len(CATEGORICAL_COLORS)]
+                      for i in range(len(sorted_cols))]
+        pie_counts = [by_col_cnt[c] for c, _ in sorted_cols]
+
+        fig_col = go.Figure(go.Pie(
+            labels=pie_labels,
+            values=pie_values,
+            hole=0.52,
+            sort=False,
+            direction="clockwise",
+            marker=dict(colors=pie_colors,
+                        line=dict(color="white", width=2)),
+            textinfo="percent",
+            texttemplate="%{percent:.1%}",
+            textposition="inside",
+            insidetextorientation="horizontal",
+            textfont=dict(size=13, color="white", family="Inter, Arial"),
+            customdata=pie_counts,
+            hovertemplate=("<b>%{label}</b><br>₱%{value:,.0f}"
+                           "<br>%{percent:.1%} of total"
+                           "<br>%{customdata} grant(s)<extra></extra>"),
+        ))
+        fig_col.add_annotation(
+            text=(f'<span style="font-size:19px;font-weight:700;'
+                  f'color:{NAVY};">{_peso(col_total)}</span><br>'
+                  f'<span style="font-size:11px;color:#6b7280;">'
+                  f'AWARDED</span>'),
+            x=0.5, y=0.5, showarrow=False, align="center",
+        )
+        fig_col.update_layout(
+            height=320,
+            margin=dict(t=10, b=10, l=10, r=10),
+            showlegend=True,
+            legend=dict(orientation="v", x=1.0, y=0.5,
+                        xanchor="left", yanchor="middle",
+                        font=dict(size=12, color="#374151")),
+            paper_bgcolor="white",
+            plot_bgcolor="white",
+        )
+        st.plotly_chart(fig_col, use_container_width=True,
+                        config={"displayModeBar": False})
+
+        # Figures kept as text beneath the chart — a donut shows share, not
+        # magnitude, and the peso amounts still need to be readable.
+        legend_bits = " &nbsp;·&nbsp; ".join(
+            f'<span style="white-space:nowrap;">'
+            f'<span style="display:inline-block;width:9px;height:9px;'
+            f'border-radius:2px;background:{pie_colors[i]};'
+            f'margin-right:5px;vertical-align:middle;"></span>'
+            f'<strong style="color:{NAVY};">{c}</strong> '
+            f'₱{amt:,.0f} ({by_col_cnt[c]})</span>'
+            for i, (c, amt) in enumerate(sorted_cols)
+        )
         st.markdown(
-            f'<div style="background:white;border:1px solid #e5e7eb;'
-            f'border-radius:8px;padding:18px 22px;'
-            f'box-shadow:0 1px 2px rgba(0,0,0,0.03);">{bar_rows_html}</div>',
+            f'<div style="font-size:12px;color:#6b7280;margin:-6px 0 4px 0;'
+            f'line-height:1.9;">{legend_bits}</div>',
             unsafe_allow_html=True,
         )
     else:
@@ -2574,37 +2611,73 @@ if page == "Overview":
             by_src_amt[src] = by_src_amt.get(src, 0) + float(g.get("amount") or 0)
             by_src_cnt[src] = by_src_cnt.get(src, 0) + 1
 
+        # Share of external grant value by funder (DOST-PCHRD, MMHRDC, …).
         sorted_src = sorted(by_src_amt.items(), key=lambda x: -x[1])
-        max_ext = max(amt for _, amt in sorted_src) or 1
-        ext_rows = ""
-        for i, (src, amt) in enumerate(sorted_src):
-            color = CATEGORICAL_COLORS[i % len(CATEGORICAL_COLORS)]
-            pct = amt / max_ext * 100
-            n = by_src_cnt[src]
-            ext_rows += (
-                f'<div style="display:flex;align-items:center;margin:10px 0;'
-                f'font-size:14px;">'
-                f'<div style="width:170px;color:#374151;font-weight:600;'
-                f'flex-shrink:0;padding-right:12px;overflow:hidden;'
-                f'text-overflow:ellipsis;white-space:nowrap;">{src}</div>'
-                f'<div style="flex:1;background:#f3f4f6;height:20px;'
-                f'border-radius:4px;position:relative;overflow:hidden;">'
-                f'<div style="width:{pct}%;height:100%;background:{color};'
-                f'border-radius:4px;"></div></div>'
-                f'<div style="width:170px;text-align:right;color:#6b7280;'
-                f'padding-left:12px;flex-shrink:0;">'
-                f'<strong style="color:{NAVY};">{_peso2(amt)}</strong>'
-                f' · {n} grant{"s" if n != 1 else ""}</div>'
-                f'</div>'
-            )
+        src_total = sum(amt for _, amt in sorted_src) or 1
+
+        src_labels = [s for s, _ in sorted_src]
+        src_values = [amt for _, amt in sorted_src]
+        src_colors = [CATEGORICAL_COLORS[i % len(CATEGORICAL_COLORS)]
+                      for i in range(len(sorted_src))]
+        src_counts = [by_src_cnt[s] for s, _ in sorted_src]
+
         st.markdown(
-            f'<div style="background:white;border:1px solid #e5e7eb;'
-            f'border-radius:8px;padding:18px 22px;'
-            f'box-shadow:0 1px 2px rgba(0,0,0,0.03);">'
             f'<div style="font-size:12px;font-weight:700;color:#6b7280;'
             f'text-transform:uppercase;letter-spacing:0.5px;'
-            f'margin-bottom:8px;">By funding source</div>'
-            f'{ext_rows}</div>',
+            f'margin:4px 0 -4px 0;">By funding source</div>',
+            unsafe_allow_html=True,
+        )
+
+        fig_src = go.Figure(go.Pie(
+            labels=src_labels,
+            values=src_values,
+            hole=0.52,
+            sort=False,
+            direction="clockwise",
+            marker=dict(colors=src_colors,
+                        line=dict(color="white", width=2)),
+            textinfo="percent",
+            texttemplate="%{percent:.1%}",
+            textposition="inside",
+            insidetextorientation="horizontal",
+            textfont=dict(size=13, color="white", family="Inter, Arial"),
+            customdata=src_counts,
+            hovertemplate=("<b>%{label}</b><br>₱%{value:,.0f}"
+                           "<br>%{percent:.1%} of total"
+                           "<br>%{customdata} grant(s)<extra></extra>"),
+        ))
+        fig_src.add_annotation(
+            text=(f'<span style="font-size:19px;font-weight:700;'
+                  f'color:{NAVY};">{_peso2(src_total)}</span><br>'
+                  f'<span style="font-size:11px;color:#6b7280;">'
+                  f'TOTAL VALUE</span>'),
+            x=0.5, y=0.5, showarrow=False, align="center",
+        )
+        fig_src.update_layout(
+            height=320,
+            margin=dict(t=10, b=10, l=10, r=10),
+            showlegend=True,
+            legend=dict(orientation="v", x=1.0, y=0.5,
+                        xanchor="left", yanchor="middle",
+                        font=dict(size=12, color="#374151")),
+            paper_bgcolor="white",
+            plot_bgcolor="white",
+        )
+        st.plotly_chart(fig_src, use_container_width=True,
+                        config={"displayModeBar": False})
+
+        src_legend = " &nbsp;·&nbsp; ".join(
+            f'<span style="white-space:nowrap;">'
+            f'<span style="display:inline-block;width:9px;height:9px;'
+            f'border-radius:2px;background:{src_colors[i]};'
+            f'margin-right:5px;vertical-align:middle;"></span>'
+            f'<strong style="color:{NAVY};">{s}</strong> '
+            f'{_peso2(amt)} ({by_src_cnt[s]})</span>'
+            for i, (s, amt) in enumerate(sorted_src)
+        )
+        st.markdown(
+            f'<div style="font-size:12px;color:#6b7280;margin:-6px 0 4px 0;'
+            f'line-height:1.9;">{src_legend}</div>',
             unsafe_allow_html=True,
         )
 
