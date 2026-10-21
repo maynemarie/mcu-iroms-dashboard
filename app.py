@@ -1484,7 +1484,7 @@ if len(pages_in_group) > 1:
             "nav-link": {
                 "font-size": "13px",
                 "font-weight": "600",
-                "color": "#6b7280",
+                "color": "#64748b",
                 "text-align": "center",
                 "margin": "0 3px",
                 "padding": "8px 14px",
@@ -1531,7 +1531,7 @@ def donut(values, labels, colors, total_label, total_value):
     )])
     fig.update_layout(
         annotations=[dict(
-            text=f"<b>{total_value}</b><br><span style='font-size:9px;color:#6b7280'>{total_label}</span>",
+            text=f"<b>{total_value}</b><br><span style='font-size:9px;color:#64748b'>{total_label}</span>",
             x=0.5, y=0.5, font_size=18, showarrow=False, font_color=NAVY)],
         height=180, margin=dict(t=4, b=4, l=4, r=4),
         showlegend=False, paper_bgcolor='rgba(0,0,0,0)',
@@ -1687,9 +1687,9 @@ if page == "Overview":
             delta_html = (f'<div style="font-size:12px;color:{delta_color};'
                           f'font-weight:500;margin-top:2px;">{delta_text}</div>')
         return (
-            '<div style="background:white;border:1px solid #e5e7eb;border-radius:8px;'
-            'padding:16px 18px;height:100%;box-shadow:0 1px 2px rgba(0,0,0,0.03);">'
-            f'<div style="font-size:11px;color:#6b7280;text-transform:uppercase;'
+            '<div style="background:white;border:1px solid #e8eaef;border-radius:12px;'
+            'padding:16px 18px;height:100%;box-shadow:0 1px 2px rgba(15,23,42,0.04), 0 1px 3px rgba(15,23,42,0.03);">'
+            f'<div style="font-size:11px;color:#64748b;text-transform:uppercase;'
             f'letter-spacing:0.5px;font-weight:600;">{label}</div>'
             f'<div style="font-size:28px;font-weight:700;color:{NAVY};margin-top:6px;'
             f'line-height:1.1;">{value}</div>'
@@ -1708,11 +1708,11 @@ if page == "Overview":
             pct = round(cnt / max_v * 100) if max_v else 0
             bars += (
                 f'<div style="display:flex;align-items:center;margin:4px 0;font-size:12px;">'
-                f'<div style="width:30px;color:#374151;font-weight:700;">{lbl}</div>'
-                f'<div style="flex:1;background:#f3f4f6;height:8px;border-radius:3px;margin:0 8px;">'
+                f'<div style="width:30px;color:#475569;font-weight:700;">{lbl}</div>'
+                f'<div style="flex:1;background:#f1f3f7;height:8px;border-radius:3px;margin:0 8px;">'
                 f'<div style="width:{pct}%;height:100%;background:{color};border-radius:3px;"></div>'
                 f'</div>'
-                f'<div style="width:34px;text-align:right;color:#6b7280;font-weight:600;">{cnt}</div>'
+                f'<div style="width:34px;text-align:right;color:#64748b;font-weight:600;">{cnt}</div>'
                 f'</div>'
             )
         return f'<div style="margin-top:12px;">{bars}</div>'
@@ -1762,13 +1762,13 @@ if page == "Overview":
             f'{center_top}</text>'
             f'<text x="{size/2}" y="{size/2 + 14}" text-anchor="middle" '
             f'dominant-baseline="central" '
-            f'style="font-size:9px;fill:#6b7280;letter-spacing:0.3px;">'
+            f'style="font-size:9px;fill:#64748b;letter-spacing:0.3px;">'
             f'{center_bot}</text>'
             f'</svg>'
         )
 
     # ===== Helper: compact KPI tile (header strip + value + sub + optional right slot) =====
-    def kpi_tile(icon, label, value, sub=None, sub_color="#6b7280",
+    def kpi_tile(icon, label, value, sub=None, sub_color="#64748b",
                  accent=C_INDIGO, bars_html="", right_html=""):
         sub_html = (
             f'<div style="font-size:13px;color:{sub_color};font-weight:500;'
@@ -1789,12 +1789,12 @@ if page == "Overview":
                 f'margin-top:8px;line-height:1.1;">{value}</div>{sub_html}'
             )
         return (
-            f'<div style="background:white;border:1px solid #e5e7eb;'
+            f'<div style="background:white;border:1px solid #e8eaef;'
             f'border-radius:10px;padding:16px 18px;height:100%;'
             f'box-shadow:0 2px 4px rgba(15,23,42,0.04);'
             f'border-top:3px solid {accent};">'
             f'<div style="display:flex;align-items:center;gap:8px;'
-            f'font-size:12px;color:#6b7280;text-transform:uppercase;'
+            f'font-size:12px;color:#64748b;text-transform:uppercase;'
             f'letter-spacing:0.5px;font-weight:700;">'
             f'<span style="font-size:15px;">{icon}</span><span>{label}</span></div>'
             f'{body}{bars_html}'
@@ -1844,16 +1844,16 @@ if page == "Overview":
     yoy_line = (f"{yoy_arrow} {abs(scopus_yoy):.1f}% YoY ({last_yr})"
                 if last_yr else "—")
     impact_line = (
-        f'<div style="font-size:13px;color:#374151;margin-top:8px;'
-        f'padding-top:8px;border-top:1px solid #f3f4f6;display:flex;'
+        f'<div style="font-size:13px;color:#475569;margin-top:8px;'
+        f'padding-top:8px;border-top:1px solid #f1f3f7;display:flex;'
         f'gap:12px;flex-wrap:wrap;">'
         f'<span><strong style="color:{NAVY};">{n_years}</strong>'
-        f'<span style="color:#6b7280;"> yr ({year_range_label})</span></span>'
+        f'<span style="color:#64748b;"> yr ({year_range_label})</span></span>'
         f'<span><strong style="color:{NAVY};">h={h_idx}</strong></span>'
         f'<span><strong style="color:{NAVY};">{cit_total:,}</strong>'
-        f'<span style="color:#6b7280;"> cites</span></span>'
+        f'<span style="color:#64748b;"> cites</span></span>'
         f'<span><strong style="color:{NAVY};">{oa_pct_kpi}%</strong>'
-        f'<span style="color:#6b7280;"> OA</span></span>'
+        f'<span style="color:#64748b;"> OA</span></span>'
         f'</div>'
     )
 
@@ -1907,7 +1907,7 @@ if page == "Overview":
             color = CATEGORICAL_COLORS[i % len(CATEGORICAL_COLORS)]
             legend_items += (
                 f'<span style="display:inline-flex;align-items:center;'
-                f'gap:5px;margin:3px 10px 3px 0;font-size:12px;color:#374151;'
+                f'gap:5px;margin:3px 10px 3px 0;font-size:12px;color:#475569;'
                 f'white-space:nowrap;">'
                 f'<span style="width:10px;height:10px;background:{color};'
                 f'border-radius:50%;display:inline-block;flex-shrink:0;"></span>'
@@ -1915,7 +1915,7 @@ if page == "Overview":
             )
         legend_html = (
             f'<div style="margin-top:10px;padding-top:10px;'
-            f'border-top:1px solid #f3f4f6;line-height:1.8;'
+            f'border-top:1px solid #f1f3f7;line-height:1.8;'
             f'display:flex;flex-wrap:wrap;">{legend_items}</div>'
             if legend_items else ""
         )
@@ -1944,12 +1944,12 @@ if page == "Overview":
         ]
         ws_legend = ""
         for color, label, val in ws_legend_items:
-            border = (f"border:1px dashed #9ca3af;"
+            border = (f"border:1px dashed #94a3b8;"
                       if color == C_TRACK else "")
             ws_legend += (
                 f'<div style="display:flex;align-items:center;'
                 f'justify-content:space-between;font-size:12px;'
-                f'color:#374151;margin:3px 0;">'
+                f'color:#475569;margin:3px 0;">'
                 f'<div style="display:flex;align-items:center;gap:7px;">'
                 f'<span style="width:10px;height:10px;background:{color};'
                 f'border-radius:3px;display:inline-block;{border}'
@@ -1959,7 +1959,7 @@ if page == "Overview":
             )
         ws_legend_html = (
             f'<div style="margin-top:10px;padding-top:10px;'
-            f'border-top:1px solid #f3f4f6;">{ws_legend}</div>'
+            f'border-top:1px solid #f1f3f7;">{ws_legend}</div>'
         )
         st.markdown(kpi_tile(
             "🎓", "Workshops Completed",
@@ -2008,7 +2008,7 @@ if page == "Overview":
             "Awarded":   ("#d1fae5", "#065f46"),
             "Active":    ("#ccfbf1", "#115e59"),
             "Completed": ("#dbeafe", "#1e40af"),
-            "Cancelled": ("#f3f4f6", "#6b7280"),
+            "Cancelled": ("#f1f3f7", "#64748b"),
         }
         status_pills_html = ""
         for s in ["In Review", "Awarded", "Active", "Completed", "Cancelled"]:
@@ -2025,7 +2025,7 @@ if page == "Overview":
             )
         if not status_pills_html:
             status_pills_html = (
-                f'<span style="color:#9ca3af;font-size:12px;">No grants yet</span>'
+                f'<span style="color:#94a3b8;font-size:12px;">No grants yet</span>'
             )
         status_sub = (
             f'<div style="margin-top:6px;display:flex;flex-wrap:wrap;'
@@ -2043,7 +2043,7 @@ if page == "Overview":
             pi_legend += (
                 f'<div style="display:flex;align-items:center;'
                 f'justify-content:space-between;font-size:12px;'
-                f'color:#374151;margin:3px 0;gap:8px;">'
+                f'color:#475569;margin:3px 0;gap:8px;">'
                 f'<div style="display:flex;align-items:center;gap:7px;'
                 f'min-width:0;flex:1;">'
                 f'<span style="width:10px;height:10px;background:{color};'
@@ -2051,13 +2051,13 @@ if page == "Overview":
                 f'<span style="overflow:hidden;text-overflow:ellipsis;'
                 f'white-space:nowrap;">{pi}</span></div>'
                 f'<strong style="color:{NAVY};font-size:12px;flex-shrink:0;">'
-                f'{amt_label}<span style="color:#6b7280;font-weight:500;">'
+                f'{amt_label}<span style="color:#64748b;font-weight:500;">'
                 f' · {cnt}</span></strong></div>'
             )
         pi_legend_html = (
             f'<div style="margin-top:10px;padding-top:10px;'
-            f'border-top:1px solid #f3f4f6;">'
-            f'<div style="font-size:11px;color:#6b7280;text-transform:uppercase;'
+            f'border-top:1px solid #f1f3f7;">'
+            f'<div style="font-size:11px;color:#64748b;text-transform:uppercase;'
             f'letter-spacing:0.5px;font-weight:700;margin-bottom:6px;">'
             f'By PI</div>{pi_legend}</div>'
             if pi_legend else ""
@@ -2192,7 +2192,7 @@ if page == "Overview":
                 "Scholarly Engagement": C_SKY,
             }
             source_badge = {
-                "calendar": ("📅", "#6b7280"),
+                "calendar": ("📅", "#64748b"),
                 "workshop": ("🎓", C_EMERALD),
                 "engagement": ("🎤", C_SKY),
             }
@@ -2208,38 +2208,38 @@ if page == "Overview":
                 except Exception:
                     pass
                 etype = ev.get("type") or "Other"
-                ecolor = type_color.get(etype, "#6b7280")
-                icon, _ = source_badge.get(ev.get("source"), ("•", "#6b7280"))
+                ecolor = type_color.get(etype, "#64748b")
+                icon, _ = source_badge.get(ev.get("source"), ("•", "#64748b"))
                 title_text = ev.get("title") or "—"
                 loc_text = ev.get("location") or ""
                 item_html += (
                     f'<div style="display:flex;align-items:center;gap:12px;'
-                    f'padding:10px 4px;border-bottom:1px solid #f3f4f6;">'
+                    f'padding:10px 4px;border-bottom:1px solid #f1f3f7;">'
                     f'<div style="width:7px;height:42px;background:{ecolor};'
                     f'border-radius:3px;flex-shrink:0;"></div>'
                     f'<div style="flex:1;min-width:0;">'
                     f'<div style="font-size:15px;font-weight:600;color:{NAVY};'
                     f'overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'
                     f'{icon} {title_text}</div>'
-                    f'<div style="font-size:13px;color:#6b7280;margin-top:3px;">'
+                    f'<div style="font-size:13px;color:#64748b;margin-top:3px;">'
                     f'{ev_date} · {etype}'
                     + (f' · {loc_text}' if loc_text else "")
                     + f'</div></div>'
-                    f'<div style="font-size:13px;color:#6b7280;flex-shrink:0;'
+                    f'<div style="font-size:13px;color:#64748b;flex-shrink:0;'
                     f'font-weight:600;">{days_to}</div>'
                     f'</div>'
                 )
             st.markdown(
-                f'<div style="background:white;border:1px solid #e5e7eb;'
+                f'<div style="background:white;border:1px solid #e8eaef;'
                 f'border-radius:8px;padding:6px 14px;'
-                f'box-shadow:0 1px 2px rgba(0,0,0,0.03);">{item_html}</div>',
+                f'box-shadow:0 1px 2px rgba(15,23,42,0.04), 0 1px 3px rgba(15,23,42,0.03);">{item_html}</div>',
                 unsafe_allow_html=True,
             )
         else:
             st.markdown(
-                '<div style="background:white;border:1px solid #e5e7eb;'
+                '<div style="background:white;border:1px solid #e8eaef;'
                 'border-radius:8px;padding:18px;text-align:center;'
-                'color:#9ca3af;font-size:14px;">No events in the next 30 days.</div>',
+                'color:#94a3b8;font-size:14px;">No events in the next 30 days.</div>',
                 unsafe_allow_html=True,
             )
 
@@ -2252,7 +2252,7 @@ if page == "Overview":
             item_html = ""
             for a in award_winners:
                 item_html += (
-                    f'<div style="padding:12px 4px;border-bottom:1px solid #f3f4f6;">'
+                    f'<div style="padding:12px 4px;border-bottom:1px solid #f1f3f7;">'
                     f'<div style="display:inline-block;padding:3px 10px;'
                     f'background:#fde68a;border:1px solid #f59e0b;'
                     f'border-radius:12px;font-size:12px;font-weight:700;'
@@ -2260,27 +2260,27 @@ if page == "Overview":
                     f'letter-spacing:0.4px;">🏆 {(a.get("award") or "").strip()}</div>'
                     f'<div style="font-size:15px;font-weight:600;color:{NAVY};'
                     f'margin-top:6px;">{a.get("attendee_name") or "—"}'
-                    + (f' <span style="font-weight:400;color:#6b7280;">'
+                    + (f' <span style="font-weight:400;color:#64748b;">'
                        f'· {a.get("attendee_college")}</span>'
                        if a.get("attendee_college") else "")
                     + f'</div>'
-                    f'<div style="font-size:13px;color:#6b7280;margin-top:3px;'
+                    f'<div style="font-size:13px;color:#64748b;margin-top:3px;'
                     f'font-style:italic;">{a.get("_event_title") or "—"}'
                     + (f' ({a.get("_event_date")})' if a.get("_event_date") else "")
                     + f'</div>'
                     f'</div>'
                 )
             st.markdown(
-                f'<div style="background:white;border:1px solid #e5e7eb;'
+                f'<div style="background:white;border:1px solid #e8eaef;'
                 f'border-radius:8px;padding:6px 14px;'
-                f'box-shadow:0 1px 2px rgba(0,0,0,0.03);">{item_html}</div>',
+                f'box-shadow:0 1px 2px rgba(15,23,42,0.04), 0 1px 3px rgba(15,23,42,0.03);">{item_html}</div>',
                 unsafe_allow_html=True,
             )
         else:
             st.markdown(
-                '<div style="background:white;border:1px solid #e5e7eb;'
+                '<div style="background:white;border:1px solid #e8eaef;'
                 'border-radius:8px;padding:18px;text-align:center;'
-                'color:#9ca3af;font-size:12px;">No awards logged yet.</div>',
+                'color:#94a3b8;font-size:12px;">No awards logged yet.</div>',
                 unsafe_allow_html=True,
             )
 
@@ -2330,12 +2330,12 @@ if page == "Overview":
 
         # ===== PANEL HEADER =====
         header_html = (
-            f'<div style="background:white;border:1px solid #e5e7eb;border-radius:8px 8px 0 0;padding:20px 24px 16px 24px;box-shadow:0 1px 2px rgba(0,0,0,0.03);border-bottom:none;">'
+            f'<div style="background:white;border:1px solid #e8eaef;border-radius:12px 12px 0 0;padding:20px 24px 16px 24px;box-shadow:0 1px 2px rgba(15,23,42,0.04), 0 1px 3px rgba(15,23,42,0.03);border-bottom:none;">'
             f'<div style="display:flex;justify-content:space-between;align-items:baseline;">'
             f'<h3 style="margin:0;font-size:18px;color:{NAVY};font-weight:700;letter-spacing:0.2px;">Scopus-Indexed Publications</h3>'
-            f'<span style="font-size:12px;font-weight:700;background:#f4f6fa;color:#374151;padding:5px 12px;border-radius:12px;text-transform:uppercase;letter-spacing:0.4px;">{year_range}</span>'
+            f'<span style="font-size:12px;font-weight:700;background:#f6f7fa;color:#475569;padding:5px 12px;border-radius:12px;text-transform:uppercase;letter-spacing:0.4px;">{year_range}</span>'
             f'</div>'
-            f'<div style="font-size:14px;color:#4b5563;margin-top:6px;">Annual output, quartile mix, and citation impact.</div>'
+            f'<div style="font-size:14px;color:#475569;margin-top:6px;">Annual output, quartile mix, and citation impact.</div>'
             f'</div>'
         )
         st.markdown(header_html, unsafe_allow_html=True)
@@ -2366,7 +2366,7 @@ if page == "Overview":
                 showlegend=False,
                 margin=dict(t=24, b=12, l=12, r=12),
                 xaxis=dict(title=None, tickmode='linear', showgrid=False,
-                           tickfont=dict(size=14, color='#6b7280'),
+                           tickfont=dict(size=14, color='#64748b'),
                            showline=False, zeroline=False),
                 yaxis=dict(visible=False, range=[0, max_y * 1.22]),
                 plot_bgcolor='white',
@@ -2390,31 +2390,31 @@ if page == "Overview":
                 c = QUARTILE_COLORS[q]
                 quartile_bars += (
                     f'<div style="display:flex;align-items:center;margin:6px 0;font-size:13px;">'
-                    f'<div style="width:34px;color:#374151;font-weight:700;">{q}</div>'
-                    f'<div style="flex:1;background:#f3f4f6;height:13px;border-radius:4px;margin:0 10px;">'
+                    f'<div style="width:34px;color:#475569;font-weight:700;">{q}</div>'
+                    f'<div style="flex:1;background:#f1f3f7;height:13px;border-radius:4px;margin:0 10px;">'
                     f'<div style="width:{pct}%;height:100%;background:{c};border-radius:4px;"></div>'
                     f'</div>'
-                    f'<div style="width:72px;text-align:right;color:#6b7280;">'
+                    f'<div style="width:72px;text-align:right;color:#64748b;">'
                     f'<strong style="color:{NAVY};">{n}</strong> · {pct}%'
                     f'</div>'
                     f'</div>'
                 )
 
             panel_html = (
-                f'<div style="background:white;border:1px solid #e5e7eb;border-radius:8px;padding:18px 22px;font-size:14px;">'
+                f'<div style="background:white;border:1px solid #e8eaef;border-radius:12px;padding:18px 22px;font-size:14px;">'
                 f'<div style="margin-bottom:16px;">'
-                f'<div style="color:#6b7280;font-size:12px;text-transform:uppercase;letter-spacing:0.4px;font-weight:700;">Total ({last_year})</div>'
+                f'<div style="color:#64748b;font-size:12px;text-transform:uppercase;letter-spacing:0.4px;font-weight:700;">Total ({last_year})</div>'
                 f'<div style="font-size:26px;font-weight:700;color:{NAVY};margin-top:4px;line-height:1;">{latest_count}</div>'
                 f'<div style="font-size:13px;color:{yoy_color};font-weight:600;margin-top:6px;">{yoy_arrow} {abs(yoy):.1f}% YoY</div>'
                 f'</div>'
-                f'<div style="color:#6b7280;font-size:12px;text-transform:uppercase;letter-spacing:0.4px;font-weight:700;margin-bottom:8px;">Quartile Mix</div>'
+                f'<div style="color:#64748b;font-size:12px;text-transform:uppercase;letter-spacing:0.4px;font-weight:700;margin-bottom:8px;">Quartile Mix</div>'
                 f'{quartile_bars}'
-                f'<div style="margin-top:14px;display:flex;gap:22px;padding-top:12px;border-top:1px solid #e5e7eb;flex-wrap:wrap;">'
-                f'<div><span style="color:#6b7280;font-size:11px;text-transform:uppercase;letter-spacing:0.3px;font-weight:700;">h-index</span><br>'
+                f'<div style="margin-top:14px;display:flex;gap:22px;padding-top:12px;border-top:1px solid #e8eaef;flex-wrap:wrap;">'
+                f'<div><span style="color:#64748b;font-size:11px;text-transform:uppercase;letter-spacing:0.3px;font-weight:700;">h-index</span><br>'
                 f'<strong style="color:{NAVY};font-size:17px;">{h_index}</strong></div>'
-                f'<div><span style="color:#6b7280;font-size:11px;text-transform:uppercase;letter-spacing:0.3px;font-weight:700;">Citations</span><br>'
+                f'<div><span style="color:#64748b;font-size:11px;text-transform:uppercase;letter-spacing:0.3px;font-weight:700;">Citations</span><br>'
                 f'<strong style="color:{NAVY};font-size:17px;">{cit_total:,}</strong></div>'
-                f'<div><span style="color:#6b7280;font-size:11px;text-transform:uppercase;letter-spacing:0.3px;font-weight:700;">Open Access</span><br>'
+                f'<div><span style="color:#64748b;font-size:11px;text-transform:uppercase;letter-spacing:0.3px;font-weight:700;">Open Access</span><br>'
                 f'<strong style="color:{NAVY};font-size:17px;">{oa_pct}%</strong></div>'
                 f'</div>'
                 f'</div>'
@@ -2446,36 +2446,36 @@ if page == "Overview":
 
     n_grants = len(grants_db) if grants_db else 0
     progress_html = (
-        f'<div style="background:white;border:1px solid #e5e7eb;border-radius:8px;'
-        f'padding:18px 20px;margin-bottom:14px;box-shadow:0 1px 2px rgba(0,0,0,0.03);">'
+        f'<div style="background:white;border:1px solid #e8eaef;border-radius:12px;'
+        f'padding:18px 20px;margin-bottom:14px;box-shadow:0 1px 2px rgba(15,23,42,0.04), 0 1px 3px rgba(15,23,42,0.03);">'
         f'<div style="display:flex;justify-content:space-between;align-items:baseline;'
         f'margin-bottom:12px;flex-wrap:wrap;gap:6px;">'
         f'<div style="font-size:14px;font-weight:700;color:{NAVY};'
         f'text-transform:uppercase;letter-spacing:0.5px;">'
         f'💰 Budget Utilisation · AY 2025–2026 (Allocation {_peso(GRANT_BUDGET)})</div>'
-        f'<div style="font-size:13px;color:#6b7280;">'
+        f'<div style="font-size:13px;color:#64748b;">'
         f'<strong style="color:{NAVY};font-size:16px;">{_peso(awarded)}</strong> awarded '
         f'<span style="color:{GOLD};font-weight:700;">({awarded_pct:.0f}%)</span></div>'
         f'</div>'
         f'<div style="display:flex;height:16px;border-radius:8px;overflow:hidden;'
-        f'background:#f3f4f6;border:1px solid #e5e7eb;">'
+        f'background:#f1f3f7;border:1px solid #e8eaef;">'
         f'<div title="Awarded: {_peso(awarded)}" style="width:{awarded_w}%;'
         f'background:{GOLD};"></div>'
         f'<div title="Remaining: {_peso(remaining)}" style="width:{remaining_w}%;'
         f'background:transparent;"></div>'
         f'</div>'
         f'<div style="display:flex;gap:22px;margin-top:12px;font-size:13px;'
-        f'color:#374151;flex-wrap:wrap;">'
+        f'color:#475569;flex-wrap:wrap;">'
         f'<div><span style="display:inline-block;width:12px;height:12px;'
         f'background:{GOLD};border-radius:3px;margin-right:6px;'
         f'vertical-align:middle;"></span>'
         f'<strong>{_peso(awarded)}</strong> Awarded · {n_grants} project'
         f'{"s" if n_grants != 1 else ""}</div>'
         f'<div><span style="display:inline-block;width:12px;height:12px;'
-        f'background:#e5e7eb;border:1px dashed #9ca3af;border-radius:3px;'
+        f'background:#e8eaef;border:1px dashed #94a3b8;border-radius:3px;'
         f'margin-right:6px;vertical-align:middle;"></span>'
         f'<strong>{_peso(remaining)}</strong> Remaining</div>'
-        f'<div style="margin-left:auto;color:#6b7280;">'
+        f'<div style="margin-left:auto;color:#64748b;">'
         f'Avg. grant size: <strong style="color:{NAVY};">'
         f'{_peso(awarded / n_grants) if n_grants else "—"}</strong></div>'
         f'</div>'
@@ -2518,7 +2518,7 @@ if page == "Overview":
         fig_col.add_annotation(
             text=(f'<span style="font-size:19px;font-weight:700;'
                   f'color:{NAVY};">{_peso(col_total)}</span><br>'
-                  f'<span style="font-size:11px;color:#6b7280;">'
+                  f'<span style="font-size:11px;color:#64748b;">'
                   f'AWARDED</span>'),
             x=0.5, y=0.5, showarrow=False, align="center",
         )
@@ -2528,7 +2528,7 @@ if page == "Overview":
             showlegend=True,
             legend=dict(orientation="v", x=1.0, y=0.5,
                         xanchor="left", yanchor="middle",
-                        font=dict(size=12, color="#374151")),
+                        font=dict(size=12, color="#475569")),
             paper_bgcolor="white",
             plot_bgcolor="white",
         )
@@ -2547,7 +2547,7 @@ if page == "Overview":
             for i, (c, amt) in enumerate(sorted_cols)
         )
         st.markdown(
-            f'<div style="font-size:12px;color:#6b7280;margin:-6px 0 4px 0;'
+            f'<div style="font-size:12px;color:#64748b;margin:-6px 0 4px 0;'
             f'line-height:1.9;">{legend_bits}</div>',
             unsafe_allow_html=True,
         )
@@ -2622,7 +2622,7 @@ if page == "Overview":
         src_counts = [by_src_cnt[s] for s, _ in sorted_src]
 
         st.markdown(
-            f'<div style="font-size:12px;font-weight:700;color:#6b7280;'
+            f'<div style="font-size:12px;font-weight:700;color:#64748b;'
             f'text-transform:uppercase;letter-spacing:0.5px;'
             f'margin:4px 0 -4px 0;">By funding source</div>',
             unsafe_allow_html=True,
@@ -2649,7 +2649,7 @@ if page == "Overview":
         fig_src.add_annotation(
             text=(f'<span style="font-size:19px;font-weight:700;'
                   f'color:{NAVY};">{_peso2(src_total)}</span><br>'
-                  f'<span style="font-size:11px;color:#6b7280;">'
+                  f'<span style="font-size:11px;color:#64748b;">'
                   f'TOTAL VALUE</span>'),
             x=0.5, y=0.5, showarrow=False, align="center",
         )
@@ -2659,7 +2659,7 @@ if page == "Overview":
             showlegend=True,
             legend=dict(orientation="v", x=1.0, y=0.5,
                         xanchor="left", yanchor="middle",
-                        font=dict(size=12, color="#374151")),
+                        font=dict(size=12, color="#475569")),
             paper_bgcolor="white",
             plot_bgcolor="white",
         )
@@ -2676,7 +2676,7 @@ if page == "Overview":
             for i, (s, amt) in enumerate(sorted_src)
         )
         st.markdown(
-            f'<div style="font-size:12px;color:#6b7280;margin:-6px 0 4px 0;'
+            f'<div style="font-size:12px;color:#64748b;margin:-6px 0 4px 0;'
             f'line-height:1.9;">{src_legend}</div>',
             unsafe_allow_html=True,
         )
@@ -2687,7 +2687,7 @@ if page == "Overview":
             "Awarded":    ("#d1fae5", "#065f46", "#10b981"),
             "Active":     ("#ccfbf1", "#115e59", "#0d9488"),
             "Completed":  ("#dbeafe", "#1e40af", "#3b82f6"),
-            "Cancelled":  ("#f3f4f6", "#6b7280", "#9ca3af"),
+            "Cancelled":  ("#f1f3f7", "#64748b", "#94a3b8"),
         }
         STATUS_PIPELINE_ORDER = ["In Review", "Awarded", "Active",
                                   "Completed", "Cancelled"]
@@ -2709,7 +2709,7 @@ if page == "Overview":
         pipeline_cols_html = ""
         for s in STATUS_PIPELINE_ORDER:
             bag = by_status.get(s, [])
-            bg, fg, border = STATUS_BADGE.get(s, ("#f3f4f6", "#374151", "#9ca3af"))
+            bg, fg, border = STATUS_BADGE.get(s, ("#f1f3f7", "#475569", "#94a3b8"))
             items_html = ""
             for g in bag[:8]:
                 title = _safe((g.get("title") or "")[:60])
@@ -2719,12 +2719,12 @@ if page == "Overview":
                 src = _safe(g.get("funding_source") or "")
                 items_html += (
                     f'<div style="padding:8px 10px;background:white;'
-                    f'border:1px solid #e5e7eb;border-radius:6px;'
+                    f'border:1px solid #e8eaef;border-radius:6px;'
                     f'margin-bottom:6px;font-size:12px;">'
                     f'<div style="font-weight:600;color:{NAVY};line-height:1.3;'
                     f'overflow:hidden;text-overflow:ellipsis;'
                     f'white-space:nowrap;">{title or "—"}</div>'
-                    f'<div style="font-size:11px;color:#6b7280;margin-top:2px;">'
+                    f'<div style="font-size:11px;color:#64748b;margin-top:2px;">'
                     f'{pi} · {src}</div>'
                     f'<div style="font-size:11px;margin-top:3px;">'
                     f'<strong style="color:{NAVY};">{amt_label}</strong></div>'
@@ -2733,16 +2733,16 @@ if page == "Overview":
             if len(bag) > 8:
                 items_html += (
                     f'<div style="text-align:center;font-size:11px;'
-                    f'color:#6b7280;padding:4px;">+ {len(bag) - 8} more</div>'
+                    f'color:#64748b;padding:4px;">+ {len(bag) - 8} more</div>'
                 )
             if not items_html:
                 items_html = (
-                    f'<div style="text-align:center;color:#9ca3af;'
+                    f'<div style="text-align:center;color:#94a3b8;'
                     f'font-size:11px;padding:8px;font-style:italic;">empty</div>'
                 )
             pipeline_cols_html += (
                 f'<div style="flex:1;min-width:0;background:#fafafa;'
-                f'border:1px solid #e5e7eb;border-radius:8px;padding:10px;">'
+                f'border:1px solid #e8eaef;border-radius:12px;padding:10px;">'
                 f'<div style="display:flex;align-items:center;'
                 f'justify-content:space-between;margin-bottom:8px;">'
                 f'<span style="display:inline-block;padding:3px 10px;'
@@ -2755,10 +2755,10 @@ if page == "Overview":
             )
 
         st.markdown(
-            f'<div style="background:white;border:1px solid #e5e7eb;'
+            f'<div style="background:white;border:1px solid #e8eaef;'
             f'border-radius:8px;padding:18px 22px;margin-top:14px;'
-            f'box-shadow:0 1px 2px rgba(0,0,0,0.03);">'
-            f'<div style="font-size:12px;font-weight:700;color:#6b7280;'
+            f'box-shadow:0 1px 2px rgba(15,23,42,0.04), 0 1px 3px rgba(15,23,42,0.03);">'
+            f'<div style="font-size:12px;font-weight:700;color:#64748b;'
             f'text-transform:uppercase;letter-spacing:0.5px;'
             f'margin-bottom:10px;">Application status pipeline</div>'
             f'<div style="display:flex;gap:10px;flex-wrap:wrap;">'
@@ -2788,21 +2788,21 @@ if page == "Overview":
     rem_w = max(0, 100 - comp_w - plan_w)
 
     progress_html = (
-        f'<div style="background:white;border:1px solid #e5e7eb;border-radius:8px;'
-        f'padding:18px 20px;margin-bottom:14px;box-shadow:0 1px 2px rgba(0,0,0,0.03);">'
+        f'<div style="background:white;border:1px solid #e8eaef;border-radius:12px;'
+        f'padding:18px 20px;margin-bottom:14px;box-shadow:0 1px 2px rgba(15,23,42,0.04), 0 1px 3px rgba(15,23,42,0.03);">'
         f'<div style="display:flex;justify-content:space-between;align-items:baseline;'
         f'margin-bottom:12px;flex-wrap:wrap;gap:6px;">'
         f'<div style="font-size:14px;font-weight:700;color:{NAVY};'
         f'text-transform:uppercase;letter-spacing:0.5px;">'
         f'🎯 Target vs Actual · {WS_PLAN_LABEL}</div>'
-        f'<div style="font-size:13px;color:#6b7280;">'
+        f'<div style="font-size:13px;color:#64748b;">'
         f'<strong style="color:{NAVY};font-size:16px;">{ws_completed}</strong> / '
         f'{WS_TARGET} completed '
         f'<span style="color:{GOLD};font-weight:700;">'
         f'({achieved_pct:.0f}%)</span></div>'
         f'</div>'
         f'<div style="display:flex;height:16px;border-radius:8px;overflow:hidden;'
-        f'background:#f3f4f6;border:1px solid #e5e7eb;">'
+        f'background:#f1f3f7;border:1px solid #e8eaef;">'
         f'<div title="Completed: {ws_completed}" style="width:{comp_w}%;'
         f'background:{GOLD};"></div>'
         f'<div title="Planned: {ws_planned}" style="width:{plan_w}%;'
@@ -2811,7 +2811,7 @@ if page == "Overview":
         f'background:transparent;"></div>'
         f'</div>'
         f'<div style="display:flex;gap:22px;margin-top:12px;font-size:13px;'
-        f'color:#374151;flex-wrap:wrap;">'
+        f'color:#475569;flex-wrap:wrap;">'
         f'<div><span style="display:inline-block;width:12px;height:12px;'
         f'background:{GOLD};border-radius:3px;margin-right:6px;'
         f'vertical-align:middle;"></span>'
@@ -2821,10 +2821,10 @@ if page == "Overview":
         f'vertical-align:middle;"></span>'
         f'<strong>{ws_planned}</strong> Planned / Upcoming</div>'
         f'<div><span style="display:inline-block;width:12px;height:12px;'
-        f'background:#e5e7eb;border:1px dashed #9ca3af;border-radius:3px;'
+        f'background:#e8eaef;border:1px dashed #94a3b8;border-radius:3px;'
         f'margin-right:6px;vertical-align:middle;"></span>'
         f'<strong>{ws_remaining}</strong> Remaining to target</div>'
-        f'<div style="margin-left:auto;color:#6b7280;">'
+        f'<div style="margin-left:auto;color:#64748b;">'
         f'Pipeline coverage: <strong style="color:{NAVY};">'
         f'{pipeline_pct:.0f}%</strong></div>'
         f'</div>'
@@ -3021,7 +3021,7 @@ elif page == "Calendar of Events":
     # Convert iro_events to calendar format
     cal_events = []
     for e in events:
-        c = e.get("color") or EVENT_COLORS.get(e.get("event_type"), "#6b7280")
+        c = e.get("color") or EVENT_COLORS.get(e.get("event_type"), "#64748b")
         cal_events.append({
             "id": f"event-{e['id']}",   # so we can map back when dragged
             "title": e.get("title", "Event"),
@@ -3126,7 +3126,7 @@ elif page == "Calendar of Events":
                 "type": e.get("event_type"),
                 "location": e.get("location") or "",
                 "organizer": e.get("organizer") or "",
-                "color": e.get("color") or EVENT_COLORS.get(e.get("event_type"), "#6b7280"),
+                "color": e.get("color") or EVENT_COLORS.get(e.get("event_type"), "#64748b"),
             })
     for w in workshops_for_cal:
         if str(w.get("start_date") or "") >= today_str:
@@ -3147,18 +3147,18 @@ elif page == "Calendar of Events":
         for ev in upcoming_unified[:10]:
             cards_html += (
                 f'<div style="background:white;border-left:4px solid {ev["color"]};'
-                f'border:1px solid #e5e7eb;border-radius:8px;padding:12px 16px;'
+                f'border:1px solid #e8eaef;border-radius:12px;padding:12px 16px;'
                 f'margin-bottom:8px;display:flex;align-items:center;gap:16px;">'
                 f'<div style="min-width:110px;">'
-                f'<div style="font-size:10px;color:#6b7280;text-transform:uppercase;'
+                f'<div style="font-size:10px;color:#64748b;text-transform:uppercase;'
                 f'font-weight:600;letter-spacing:0.5px;">{ev["type"]}</div>'
                 f'<div style="font-size:14px;font-weight:700;color:{NAVY};">{ev["date"]}</div>'
                 f'</div>'
                 f'<div style="flex:1;">'
                 f'<div style="font-size:14px;font-weight:600;color:{NAVY};">{ev["title"]}</div>'
-                + (f'<div style="font-size:11px;color:#6b7280;margin-top:2px;">'
+                + (f'<div style="font-size:11px;color:#64748b;margin-top:2px;">'
                    f'📍 {ev["location"]}</div>' if ev["location"] else '')
-                + (f'<div style="font-size:11px;color:#6b7280;margin-top:2px;">'
+                + (f'<div style="font-size:11px;color:#64748b;margin-top:2px;">'
                    f'👤 {ev["organizer"]}</div>' if ev["organizer"] else '')
                 + '</div>'
                 '</div>'
@@ -3298,7 +3298,7 @@ elif page == "Calendar of Events":
                                 "organizer": organizer2 or None,
                                 "description": description2 or None,
                                 "link": link2 or None,
-                                "color": EVENT_COLORS.get(event_type2, "#6b7280"),
+                                "color": EVENT_COLORS.get(event_type2, "#64748b"),
                                 "status": status2,
                             }
                             if db_update("iro_events", e["id"], updates):
@@ -3357,7 +3357,7 @@ elif page == "Calendar of Events":
                             "organizer": organizer or None,
                             "description": description or None,
                             "link": link or None,
-                            "color": EVENT_COLORS.get(event_type, "#6b7280"),
+                            "color": EVENT_COLORS.get(event_type, "#64748b"),
                             "created_by": _USER.get("email"),
                         }
                         try:
@@ -3520,7 +3520,7 @@ elif page == "Scopus Publications (view)":
                            show_legend=False)
                     fig_pt.update_layout(
                         annotations=[dict(text=f"<b>{len(df)}</b><br>"
-                                          "<span style='font-size:11px;color:#6b7280;'>"
+                                          "<span style='font-size:11px;color:#64748b;'>"
                                           "publications</span>",
                                           x=0.5, y=0.5, showarrow=False,
                                           font=dict(size=24, color=NAVY))])
@@ -3568,7 +3568,7 @@ elif page == "Scopus Publications (view)":
                     fig_oa.update_layout(
                         annotations=[dict(
                             text=f"<b>{pct:.0f}%</b><br>"
-                                 "<span style='font-size:11px;color:#6b7280;'>"
+                                 "<span style='font-size:11px;color:#64748b;'>"
                                  "open</span>",
                             x=0.5, y=0.5, showarrow=False,
                             font=dict(size=26, color=NAVY))])
@@ -4199,8 +4199,8 @@ elif page == "Capacity-Building Workshops":
 
         thead = "".join(
             f'<th style="width:{w}%;text-align:left;padding:8px 10px;font-size:10px;'
-            f'color:#6b7280;text-transform:uppercase;letter-spacing:0.5px;'
-            f'font-weight:600;border-bottom:1px solid #e5e7eb;background:#f9fafb;">'
+            f'color:#64748b;text-transform:uppercase;letter-spacing:0.5px;'
+            f'font-weight:600;border-bottom:1px solid #e8eaef;background:#f8fafc;">'
             f'{h}</th>'
             for h, w in col_widths
         )
@@ -4209,21 +4209,21 @@ elif page == "Capacity-Building Workshops":
         for _, r in df.iterrows():
             body_rows += (
                 '<tr>'
-                f'<td style="padding:10px;font-size:11px;color:#374151;border-bottom:1px solid #f3f4f6;vertical-align:top;white-space:nowrap;font-weight:600;">{safe(r.get("AY"))}</td>'
-                f'<td style="padding:10px;font-size:11px;color:#374151;border-bottom:1px solid #f3f4f6;vertical-align:top;white-space:nowrap;">{date_label(r.get("start_date"), r.get("end_date"))}</td>'
-                f'<td style="padding:10px;font-size:12px;color:{NAVY};border-bottom:1px solid #f3f4f6;vertical-align:top;line-height:1.35;font-weight:500;word-break:break-word;">{safe(r.get("title"))}</td>'
-                f'<td style="padding:10px;font-size:11px;color:#374151;border-bottom:1px solid #f3f4f6;vertical-align:top;line-height:1.35;word-break:break-word;">{safe(r.get("speakers"))}</td>'
-                f'<td style="padding:10px;font-size:11px;color:#6b7280;border-bottom:1px solid #f3f4f6;vertical-align:top;line-height:1.35;word-break:break-word;">{safe(r.get("workshop_type"))}</td>'
-                f'<td style="padding:10px;font-size:11px;color:#6b7280;border-bottom:1px solid #f3f4f6;vertical-align:top;white-space:nowrap;">{safe(r.get("status"))}</td>'
-                f'<td style="padding:10px;font-size:11px;color:#374151;border-bottom:1px solid #f3f4f6;vertical-align:top;text-align:right;">{safe(r.get("attendees"))}</td>'
-                f'<td style="padding:10px;font-size:11px;color:#374151;border-bottom:1px solid #f3f4f6;vertical-align:top;text-align:right;">{safe(r.get("feedback_score"))}</td>'
-                f'<td style="padding:10px;font-size:11px;border-bottom:1px solid #f3f4f6;vertical-align:top;text-align:center;">{feedback_cell(r.get("materials"))}</td>'
+                f'<td style="padding:10px;font-size:11px;color:#475569;border-bottom:1px solid #f1f3f7;vertical-align:top;white-space:nowrap;font-weight:600;">{safe(r.get("AY"))}</td>'
+                f'<td style="padding:10px;font-size:11px;color:#475569;border-bottom:1px solid #f1f3f7;vertical-align:top;white-space:nowrap;">{date_label(r.get("start_date"), r.get("end_date"))}</td>'
+                f'<td style="padding:10px;font-size:12px;color:{NAVY};border-bottom:1px solid #f1f3f7;vertical-align:top;line-height:1.35;font-weight:500;word-break:break-word;">{safe(r.get("title"))}</td>'
+                f'<td style="padding:10px;font-size:11px;color:#475569;border-bottom:1px solid #f1f3f7;vertical-align:top;line-height:1.35;word-break:break-word;">{safe(r.get("speakers"))}</td>'
+                f'<td style="padding:10px;font-size:11px;color:#64748b;border-bottom:1px solid #f1f3f7;vertical-align:top;line-height:1.35;word-break:break-word;">{safe(r.get("workshop_type"))}</td>'
+                f'<td style="padding:10px;font-size:11px;color:#64748b;border-bottom:1px solid #f1f3f7;vertical-align:top;white-space:nowrap;">{safe(r.get("status"))}</td>'
+                f'<td style="padding:10px;font-size:11px;color:#475569;border-bottom:1px solid #f1f3f7;vertical-align:top;text-align:right;">{safe(r.get("attendees"))}</td>'
+                f'<td style="padding:10px;font-size:11px;color:#475569;border-bottom:1px solid #f1f3f7;vertical-align:top;text-align:right;">{safe(r.get("feedback_score"))}</td>'
+                f'<td style="padding:10px;font-size:11px;border-bottom:1px solid #f1f3f7;vertical-align:top;text-align:center;">{feedback_cell(r.get("materials"))}</td>'
                 '</tr>'
             )
 
         table_html = (
-            '<div style="background:white;border:1px solid #e5e7eb;border-radius:8px;'
-            'box-shadow:0 1px 2px rgba(0,0,0,0.03);overflow:hidden;">'
+            '<div style="background:white;border:1px solid #e8eaef;border-radius:12px;'
+            'box-shadow:0 1px 2px rgba(15,23,42,0.04), 0 1px 3px rgba(15,23,42,0.03);overflow:hidden;">'
             '<table style="width:100%;border-collapse:collapse;table-layout:fixed;">'
             f'<thead><tr>{thead}</tr></thead>'
             f'<tbody>{body_rows}</tbody>'
@@ -4365,7 +4365,7 @@ elif page == "Scholarly Engagements":
                     if award else ""
                 )
                 pres_html = (
-                    f'<div style="font-size:10px;color:#6b7280;'
+                    f'<div style="font-size:10px;color:#64748b;'
                     f'margin-top:3px;line-height:1.4;font-style:italic;'
                     f'word-break:break-word;">{pres}</div>'
                     if pres else ""
@@ -4380,11 +4380,11 @@ elif page == "Scholarly Engagements":
                     )
                 else:
                     chunks.append(
-                        f'<div style="margin-bottom:4px;color:#374151;'
+                        f'<div style="margin-bottom:4px;color:#475569;'
                         f'line-height:1.45;word-break:break-word;">'
                         f'{name}</div>'
                     )
-            return "".join(chunks) or '<span style="color:#9ca3af;">—</span>'
+            return "".join(chunks) or '<span style="color:#94a3b8;">—</span>'
 
         def att_count(eid):
             if "event_id" not in att_df.columns:
@@ -4393,7 +4393,7 @@ elif page == "Scholarly Engagements":
 
         def fmt_awards_html(eid):
             if "event_id" not in att_df.columns or "award" not in att_df.columns:
-                return '<span style="color:#9ca3af;">—</span>'
+                return '<span style="color:#94a3b8;">—</span>'
             rows = att_df[att_df["event_id"] == eid]
             chunks = []
             for _, r in rows.iterrows():
@@ -4408,11 +4408,11 @@ elif page == "Scholarly Engagements":
                     f'background:#fde68a;border:1px solid #f59e0b;'
                     f'border-radius:8px;white-space:nowrap;'
                     f'line-height:1.4;">🏆 {award}</span>'
-                    f'<div style="font-size:10px;color:#6b7280;'
+                    f'<div style="font-size:10px;color:#64748b;'
                     f'margin-top:3px;line-height:1.4;word-break:break-word;">'
                     f'{name}</div></div>'
                 )
-            return "".join(chunks) or '<span style="color:#9ca3af;">—</span>'
+            return "".join(chunks) or '<span style="color:#94a3b8;">—</span>'
 
         # Column widths
         col_widths = [
@@ -4427,9 +4427,9 @@ elif page == "Scholarly Engagements":
         ]
         thead = "".join(
             f'<th style="width:{w}%;text-align:left;padding:10px;'
-            f'font-size:10px;color:#6b7280;text-transform:uppercase;'
+            f'font-size:10px;color:#64748b;text-transform:uppercase;'
             f'letter-spacing:0.5px;font-weight:700;line-height:1.4;'
-            f'border-bottom:1px solid #e5e7eb;background:#f9fafb;">{h}</th>'
+            f'border-bottom:1px solid #e8eaef;background:#f8fafc;">{h}</th>'
             for h, w in col_widths
         )
 
@@ -4439,41 +4439,41 @@ elif page == "Scholarly Engagements":
             n = att_count(eid)
             body_rows += (
                 '<tr>'
-                f'<td style="padding:12px 10px;font-size:11px;color:#374151;'
-                f'border-bottom:1px solid #f3f4f6;vertical-align:top;'
+                f'<td style="padding:12px 10px;font-size:11px;color:#475569;'
+                f'border-bottom:1px solid #f1f3f7;vertical-align:top;'
                 f'line-height:1.45;white-space:nowrap;">'
                 f'{date_label(r.get("start_date"), r.get("end_date"))}</td>'
                 f'<td style="padding:12px 10px;font-size:12px;color:{NAVY};'
-                f'border-bottom:1px solid #f3f4f6;vertical-align:top;'
+                f'border-bottom:1px solid #f1f3f7;vertical-align:top;'
                 f'line-height:1.45;font-weight:600;word-break:break-word;">'
                 f'{safe(r.get("event_title"))}</td>'
-                f'<td style="padding:12px 10px;font-size:11px;color:#6b7280;'
-                f'border-bottom:1px solid #f3f4f6;vertical-align:top;'
+                f'<td style="padding:12px 10px;font-size:11px;color:#64748b;'
+                f'border-bottom:1px solid #f1f3f7;vertical-align:top;'
                 f'line-height:1.45;word-break:break-word;">'
                 f'{safe(r.get("event_type"))}</td>'
-                f'<td style="padding:12px 10px;font-size:11px;color:#374151;'
-                f'border-bottom:1px solid #f3f4f6;vertical-align:top;'
+                f'<td style="padding:12px 10px;font-size:11px;color:#475569;'
+                f'border-bottom:1px solid #f1f3f7;vertical-align:top;'
                 f'line-height:1.45;word-break:break-word;">'
                 f'{safe(r.get("location"))}</td>'
-                f'<td style="padding:12px 10px;font-size:11px;color:#374151;'
-                f'border-bottom:1px solid #f3f4f6;vertical-align:top;'
+                f'<td style="padding:12px 10px;font-size:11px;color:#475569;'
+                f'border-bottom:1px solid #f1f3f7;vertical-align:top;'
                 f'line-height:1.45;word-break:break-word;">'
                 f'{safe(r.get("organizer"))}</td>'
-                f'<td style="padding:12px 10px;font-size:12px;color:#374151;'
-                f'border-bottom:1px solid #f3f4f6;vertical-align:top;'
+                f'<td style="padding:12px 10px;font-size:12px;color:#475569;'
+                f'border-bottom:1px solid #f1f3f7;vertical-align:top;'
                 f'text-align:right;font-weight:700;line-height:1.45;">{n}</td>'
-                f'<td style="padding:12px 10px;font-size:11px;color:#374151;'
-                f'border-bottom:1px solid #f3f4f6;vertical-align:top;'
+                f'<td style="padding:12px 10px;font-size:11px;color:#475569;'
+                f'border-bottom:1px solid #f1f3f7;vertical-align:top;'
                 f'line-height:1.5;">{fmt_attendees_html(eid)}</td>'
-                f'<td style="padding:12px 10px;font-size:11px;color:#374151;'
-                f'border-bottom:1px solid #f3f4f6;vertical-align:top;'
+                f'<td style="padding:12px 10px;font-size:11px;color:#475569;'
+                f'border-bottom:1px solid #f1f3f7;vertical-align:top;'
                 f'line-height:1.5;">{fmt_awards_html(eid)}</td>'
                 '</tr>'
             )
 
         table_html = (
-            '<div style="background:white;border:1px solid #e5e7eb;'
-            'border-radius:8px;box-shadow:0 1px 2px rgba(0,0,0,0.03);'
+            '<div style="background:white;border:1px solid #e8eaef;'
+            'border-radius:8px;box-shadow:0 1px 2px rgba(15,23,42,0.04), 0 1px 3px rgba(15,23,42,0.03);'
             'overflow:hidden;">'
             '<table style="width:100%;border-collapse:collapse;'
             'table-layout:fixed;">'
@@ -6061,9 +6061,9 @@ elif page == "IRO Policies":
         hcols = st.columns(COL_WIDTHS)
         for hc, lbl in zip(hcols, header_labels):
             hc.markdown(
-                f'<div style="font-size:13px;font-weight:700;color:#6b7280;'
+                f'<div style="font-size:13px;font-weight:700;color:#64748b;'
                 f'text-transform:uppercase;letter-spacing:0.5px;'
-                f'padding:10px 0 8px 0;border-bottom:2px solid #e5e7eb;">'
+                f'padding:10px 0 8px 0;border-bottom:2px solid #e8eaef;">'
                 f'{lbl}</div>',
                 unsafe_allow_html=True,
             )
@@ -6071,7 +6071,7 @@ elif page == "IRO Policies":
         # ----- Table rows -----
         if not filtered:
             st.markdown(
-                '<div style="padding:24px;text-align:center;color:#9ca3af;'
+                '<div style="padding:24px;text-align:center;color:#94a3b8;'
                 'font-size:15px;">No policies match the current filter.</div>',
                 unsafe_allow_html=True,
             )
@@ -6090,7 +6090,7 @@ elif page == "IRO Policies":
                 f'<div style="padding:12px 8px 12px 0;font-size:16px;'
                 f'color:{NAVY};font-weight:600;line-height:1.4;'
                 f'word-break:break-word;">{title}'
-                + (f'<div style="font-size:13px;color:#9ca3af;'
+                + (f'<div style="font-size:13px;color:#94a3b8;'
                    f'font-style:italic;margin-top:4px;line-height:1.4;">'
                    f'{notes}</div>'
                    if notes else "")
@@ -6099,24 +6099,24 @@ elif page == "IRO Policies":
             )
             cols[1].markdown(
                 f'<div style="padding:14px 8px 12px 0;font-size:14px;'
-                f'color:#374151;line-height:1.4;">{ptype}</div>',
+                f'color:#475569;line-height:1.4;">{ptype}</div>',
                 unsafe_allow_html=True,
             )
             cols[2].markdown(
                 f'<div style="padding:14px 8px 12px 0;font-size:14px;'
-                f'color:#374151;line-height:1.4;">{person}</div>',
+                f'color:#475569;line-height:1.4;">{person}</div>',
                 unsafe_allow_html=True,
             )
             cols[3].markdown(
                 f'<div style="padding:14px 8px 12px 0;font-size:14px;'
-                f'color:#374151;white-space:nowrap;">{dt}</div>',
+                f'color:#475569;white-space:nowrap;">{dt}</div>',
                 unsafe_allow_html=True,
             )
             with cols[4]:
                 # Filename label (with truncation)
                 st.markdown(
                     f'<div style="padding:10px 8px 6px 0;font-size:14px;'
-                    f'color:#374151;font-weight:500;overflow:hidden;'
+                    f'color:#475569;font-weight:500;overflow:hidden;'
                     f'text-overflow:ellipsis;white-space:nowrap;" '
                     f'title="{fname}">📄 {fname}</div>',
                     unsafe_allow_html=True,
@@ -6169,13 +6169,13 @@ elif page == "IRO Policies":
                 else:
                     st.markdown(
                         '<div style="padding:8px 0;font-size:13px;'
-                        'color:#9ca3af;">No file attached</div>',
+                        'color:#94a3b8;">No file attached</div>',
                         unsafe_allow_html=True,
                     )
 
             # Thin row separator
             st.markdown(
-                '<div style="border-bottom:1px solid #f3f4f6;'
+                '<div style="border-bottom:1px solid #f1f3f7;'
                 'margin:0 0 2px 0;"></div>',
                 unsafe_allow_html=True,
             )
@@ -8384,7 +8384,7 @@ elif page == "Submit Scholarly Engagement":
         if last:
             att_lines = "".join(
                 f'<li style="margin-bottom:2px;">'
-                f'<b>{a["name"]}</b> <span style="color:#6b7280;'
+                f'<b>{a["name"]}</b> <span style="color:#64748b;'
                 f'font-size:11px;">— {a["role"]}'
                 + (f": <i>{a['presentation_title']}</i>"
                    if a.get("presentation_title") else "") + '</span></li>'
@@ -8400,12 +8400,12 @@ elif page == "Submit Scholarly Engagement":
                 f'margin-bottom:4px;">✅ Just logged</div>'
                 f'<div style="font-weight:600;color:{NAVY};font-size:14px;">'
                 f'{last["event_title"]}</div>'
-                f'<div style="font-size:11px;color:#6b7280;margin-bottom:6px;">'
+                f'<div style="font-size:11px;color:#64748b;margin-bottom:6px;">'
                 f'{date_str} · {last.get("event_type") or "—"} · '
                 f'{last.get("location") or "—"} · '
                 f'{last.get("organizer") or "—"}</div>'
                 f'<ul style="margin:4px 0 0 16px;padding:0;font-size:12px;'
-                f'color:#374151;">{att_lines}</ul>'
+                f'color:#475569;">{att_lines}</ul>'
                 f'<div style="margin-top:6px;font-size:11px;color:#065f46;">'
                 f'Visit <b>Data → 🎤 Scholarly Engagements</b> to see it '
                 f'in the table.</div>'
