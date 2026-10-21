@@ -2424,18 +2424,16 @@ if page == "Overview":
     else:
         st.info("No publication data yet.")
 
-    # ----- In-House Grants per College (heading first, then utilisation) -----
-    st.markdown(
-        '<div class="section-heading">In-House Grants per College</div>',
-        unsafe_allow_html=True,
-    )
-
+    # ----- Grants: in-house (left) and external (right) -----
+    # Both are grant funding, so they read better compared side by side than
+    # stacked. Each half is compressed to fit: a single-line budget strip
+    # rather than a full card, compact KPI chips rather than st.metric, and
+    # the donut legend dropped in favour of the figure line beneath it.
     GRANT_BUDGET = 2_000_000  # ₱2M allocation for AY 2025-2026
     awarded = float(grants_total or 0)
     remaining = max(0.0, GRANT_BUDGET - awarded)
     awarded_pct = (awarded / GRANT_BUDGET * 100) if GRANT_BUDGET else 0
     awarded_w = min(100.0, awarded_pct)
-    remaining_w = max(0.0, 100.0 - awarded_w)
 
     def _peso(v):
         if v >= 1_000_000:
@@ -2444,121 +2442,10 @@ if page == "Overview":
             return f"₱{v/1_000:.0f}K"
         return f"₱{v:,.0f}"
 
+    _peso2 = _peso          # external section used an identical formatter
     n_grants = len(grants_db) if grants_db else 0
-    progress_html = (
-        f'<div style="background:white;border:1px solid #e8eaef;border-radius:12px;'
-        f'padding:18px 20px;margin-bottom:14px;box-shadow:0 1px 2px rgba(15,23,42,0.04), 0 1px 3px rgba(15,23,42,0.03);">'
-        f'<div style="display:flex;justify-content:space-between;align-items:baseline;'
-        f'margin-bottom:12px;flex-wrap:wrap;gap:6px;">'
-        f'<div style="font-size:14px;font-weight:700;color:{NAVY};'
-        f'text-transform:uppercase;letter-spacing:0.5px;">'
-        f'💰 Budget Utilisation · AY 2025–2026 (Allocation {_peso(GRANT_BUDGET)})</div>'
-        f'<div style="font-size:13px;color:#64748b;">'
-        f'<strong style="color:{NAVY};font-size:16px;">{_peso(awarded)}</strong> awarded '
-        f'<span style="color:{GOLD};font-weight:700;">({awarded_pct:.0f}%)</span></div>'
-        f'</div>'
-        f'<div style="display:flex;height:16px;border-radius:8px;overflow:hidden;'
-        f'background:#f1f3f7;border:1px solid #e8eaef;">'
-        f'<div title="Awarded: {_peso(awarded)}" style="width:{awarded_w}%;'
-        f'background:{GOLD};"></div>'
-        f'<div title="Remaining: {_peso(remaining)}" style="width:{remaining_w}%;'
-        f'background:transparent;"></div>'
-        f'</div>'
-        f'<div style="display:flex;gap:22px;margin-top:12px;font-size:13px;'
-        f'color:#475569;flex-wrap:wrap;">'
-        f'<div><span style="display:inline-block;width:12px;height:12px;'
-        f'background:{GOLD};border-radius:3px;margin-right:6px;'
-        f'vertical-align:middle;"></span>'
-        f'<strong>{_peso(awarded)}</strong> Awarded · {n_grants} project'
-        f'{"s" if n_grants != 1 else ""}</div>'
-        f'<div><span style="display:inline-block;width:12px;height:12px;'
-        f'background:#e8eaef;border:1px dashed #94a3b8;border-radius:3px;'
-        f'margin-right:6px;vertical-align:middle;"></span>'
-        f'<strong>{_peso(remaining)}</strong> Remaining</div>'
-        f'<div style="margin-left:auto;color:#64748b;">'
-        f'Avg. grant size: <strong style="color:{NAVY};">'
-        f'{_peso(awarded / n_grants) if n_grants else "—"}</strong></div>'
-        f'</div>'
-        f'</div>'
-    )
-    st.markdown(progress_html, unsafe_allow_html=True)
 
-    if grants_db:
-        # Share of the in-house grant pot by college — part-to-whole, so a
-        # donut rather than ranked bars. Colours come from the shared
-        # categorical sequence, assigned by college so a college keeps its
-        # hue across the dashboard.
-        sorted_cols = sorted(by_col_amt.items(), key=lambda x: -x[1])
-        col_total = sum(amt for _, amt in sorted_cols) or 1
-
-        pie_labels = [c for c, _ in sorted_cols]
-        pie_values = [amt for _, amt in sorted_cols]
-        pie_colors = [CATEGORICAL_COLORS[i % len(CATEGORICAL_COLORS)]
-                      for i in range(len(sorted_cols))]
-        pie_counts = [by_col_cnt[c] for c, _ in sorted_cols]
-
-        fig_col = go.Figure(go.Pie(
-            labels=pie_labels,
-            values=pie_values,
-            hole=0.52,
-            sort=False,
-            direction="clockwise",
-            marker=dict(colors=pie_colors,
-                        line=dict(color="white", width=2)),
-            textinfo="percent",
-            texttemplate="%{percent:.1%}",
-            textposition="inside",
-            insidetextorientation="horizontal",
-            textfont=dict(size=13, color="white", family="Inter, Arial"),
-            customdata=pie_counts,
-            hovertemplate=("<b>%{label}</b><br>₱%{value:,.0f}"
-                           "<br>%{percent:.1%} of total"
-                           "<br>%{customdata} grant(s)<extra></extra>"),
-        ))
-        fig_col.add_annotation(
-            text=(f'<span style="font-size:19px;font-weight:700;'
-                  f'color:{NAVY};">{_peso(col_total)}</span><br>'
-                  f'<span style="font-size:11px;color:#64748b;">'
-                  f'AWARDED</span>'),
-            x=0.5, y=0.5, showarrow=False, align="center",
-        )
-        fig_col.update_layout(
-            height=320,
-            margin=dict(t=10, b=10, l=10, r=10),
-            showlegend=True,
-            legend=dict(orientation="v", x=1.0, y=0.5,
-                        xanchor="left", yanchor="middle",
-                        font=dict(size=12, color="#475569")),
-            paper_bgcolor="white",
-            plot_bgcolor="white",
-        )
-        st.plotly_chart(fig_col, use_container_width=True,
-                        config={"displayModeBar": False})
-
-        # Figures kept as text beneath the chart — a donut shows share, not
-        # magnitude, and the peso amounts still need to be readable.
-        legend_bits = " &nbsp;·&nbsp; ".join(
-            f'<span style="white-space:nowrap;">'
-            f'<span style="display:inline-block;width:9px;height:9px;'
-            f'border-radius:2px;background:{pie_colors[i]};'
-            f'margin-right:5px;vertical-align:middle;"></span>'
-            f'<strong style="color:{NAVY};">{c}</strong> '
-            f'₱{amt:,.0f} ({by_col_cnt[c]})</span>'
-            for i, (c, amt) in enumerate(sorted_cols)
-        )
-        st.markdown(
-            f'<div style="font-size:12px;color:#64748b;margin:-6px 0 4px 0;'
-            f'line-height:1.9;">{legend_bits}</div>',
-            unsafe_allow_html=True,
-        )
-    else:
-        st.info("No in-house grants in the database yet.")
-
-    # ----- External Grants -----
-    st.markdown(
-        '<div class="section-heading">External Grants</div>',
-        unsafe_allow_html=True,
-    )
+    # Fetch external grants up front so both columns can render together.
     ext_grants = []
     ext_missing = False
     if sb is not None:
@@ -2570,118 +2457,189 @@ if page == "Overview":
             if "PGRST205" in str(ex) or "schema cache" in str(ex).lower():
                 ext_missing = True
 
-    if ext_missing:
-        st.warning(
-            "⚠️ The `external_grants` table doesn't exist yet. "
-            "Run **`add_external_grants.sql`** in the Supabase SQL Editor, "
-            "then refresh this page."
-        )
-    elif not ext_grants:
-        st.info("No external grants logged yet.")
-    else:
-        # KPI summary
-        ext_total = sum(float(g.get("amount") or 0) for g in ext_grants)
-        def _norm(s): return (s or "").strip().lower()
-        ext_review = sum(1 for g in ext_grants
-                         if _norm(g.get("status")) == "in review")
-        ext_awarded = sum(1 for g in ext_grants
-                          if _norm(g.get("status")) in ("awarded", "active"))
-        ext_completed = sum(1 for g in ext_grants
-                            if _norm(g.get("status")) == "completed")
+    def _norm(s):
+        return (s or "").strip().lower()
 
-        def _peso2(v):
-            if v >= 1_000_000:
-                return f"₱{v/1_000_000:.2f}M"
-            if v >= 1_000:
-                return f"₱{v/1_000:.0f}K"
-            return f"₱{v:,.0f}"
-
-        em1, em2, em3, em4, em5 = st.columns(5)
-        em1.metric("Total Grants", len(ext_grants))
-        em2.metric("Total Value", _peso2(ext_total))
-        em3.metric("In Review", ext_review)
-        em4.metric("Awarded / Active", ext_awarded)
-        em5.metric("Completed", ext_completed)
-
-        # Aggregate by funding source
-        by_src_amt = {}
-        by_src_cnt = {}
-        for g in ext_grants:
-            src = g.get("funding_source") or "Other"
-            by_src_amt[src] = by_src_amt.get(src, 0) + float(g.get("amount") or 0)
-            by_src_cnt[src] = by_src_cnt.get(src, 0) + 1
-
-        # Share of external grant value by funder (DOST-PCHRD, MMHRDC, …).
-        sorted_src = sorted(by_src_amt.items(), key=lambda x: -x[1])
-        src_total = sum(amt for _, amt in sorted_src) or 1
-
-        src_labels = [s for s, _ in sorted_src]
-        src_values = [amt for _, amt in sorted_src]
-        src_colors = [CATEGORICAL_COLORS[i % len(CATEGORICAL_COLORS)]
-                      for i in range(len(sorted_src))]
-        src_counts = [by_src_cnt[s] for s, _ in sorted_src]
-
-        st.markdown(
-            f'<div style="font-size:12px;font-weight:700;color:#64748b;'
-            f'text-transform:uppercase;letter-spacing:0.5px;'
-            f'margin:4px 0 -4px 0;">By funding source</div>',
-            unsafe_allow_html=True,
-        )
-
-        fig_src = go.Figure(go.Pie(
-            labels=src_labels,
-            values=src_values,
-            hole=0.52,
-            sort=False,
-            direction="clockwise",
-            marker=dict(colors=src_colors,
-                        line=dict(color="white", width=2)),
-            textinfo="percent",
-            texttemplate="%{percent:.1%}",
-            textposition="inside",
-            insidetextorientation="horizontal",
-            textfont=dict(size=13, color="white", family="Inter, Arial"),
-            customdata=src_counts,
+    def _donut(labels, values, colors, counts, centre_value, centre_label):
+        """Compact donut sized for a half-width column."""
+        fig = go.Figure(go.Pie(
+            labels=labels, values=values, hole=0.56,
+            sort=False, direction="clockwise",
+            marker=dict(colors=colors, line=dict(color="white", width=2)),
+            textinfo="percent", texttemplate="%{percent:.0%}",
+            textposition="inside", insidetextorientation="horizontal",
+            textfont=dict(size=12, color="white", family="Inter, Arial"),
+            customdata=counts,
             hovertemplate=("<b>%{label}</b><br>₱%{value:,.0f}"
                            "<br>%{percent:.1%} of total"
                            "<br>%{customdata} grant(s)<extra></extra>"),
         ))
-        fig_src.add_annotation(
-            text=(f'<span style="font-size:19px;font-weight:700;'
-                  f'color:{NAVY};">{_peso2(src_total)}</span><br>'
-                  f'<span style="font-size:11px;color:#64748b;">'
-                  f'TOTAL VALUE</span>'),
+        fig.add_annotation(
+            text=(f'<span style="font-size:18px;font-weight:700;'
+                  f'color:{NAVY};">{centre_value}</span><br>'
+                  f'<span style="font-size:10px;color:#64748b;">'
+                  f'{centre_label}</span>'),
             x=0.5, y=0.5, showarrow=False, align="center",
         )
-        fig_src.update_layout(
-            height=320,
-            margin=dict(t=10, b=10, l=10, r=10),
-            showlegend=True,
-            legend=dict(orientation="v", x=1.0, y=0.5,
-                        xanchor="left", yanchor="middle",
-                        font=dict(size=12, color="#475569")),
-            paper_bgcolor="white",
-            plot_bgcolor="white",
+        # Legend off: the figure line beneath carries the same keys plus the
+        # peso amounts, so a legend would only duplicate it and cost width.
+        fig.update_layout(
+            height=235, margin=dict(t=6, b=6, l=6, r=6),
+            showlegend=False,
+            paper_bgcolor="white", plot_bgcolor="white",
         )
-        st.plotly_chart(fig_src, use_container_width=True,
-                        config={"displayModeBar": False})
+        return fig
 
-        src_legend = " &nbsp;·&nbsp; ".join(
+    def _figure_line(pairs, colors, fmt):
+        """Colour-chipped text legend sitting under a donut."""
+        bits = " &nbsp;·&nbsp; ".join(
             f'<span style="white-space:nowrap;">'
-            f'<span style="display:inline-block;width:9px;height:9px;'
-            f'border-radius:2px;background:{src_colors[i]};'
+            f'<span style="display:inline-block;width:8px;height:8px;'
+            f'border-radius:2px;background:{colors[i]};'
             f'margin-right:5px;vertical-align:middle;"></span>'
-            f'<strong style="color:{NAVY};">{s}</strong> '
-            f'{_peso2(amt)} ({by_src_cnt[s]})</span>'
-            for i, (s, amt) in enumerate(sorted_src)
+            f'<strong style="color:{NAVY};">{label}</strong> '
+            f'{fmt(amt)} ({n})</span>'
+            for i, (label, amt, n) in enumerate(pairs)
+        )
+        return (f'<div style="font-size:11.5px;color:#64748b;'
+                f'margin:-4px 0 2px 0;line-height:1.85;">{bits}</div>')
+
+    g_left, g_right = st.columns(2, gap="large")
+
+    # ---------------- LEFT: in-house grants ----------------
+    with g_left:
+        st.markdown(
+            '<div class="section-heading">In-House Grants per College</div>',
+            unsafe_allow_html=True,
         )
         st.markdown(
-            f'<div style="font-size:12px;color:#64748b;margin:-6px 0 4px 0;'
-            f'line-height:1.9;">{src_legend}</div>',
+            f'<div style="background:white;border:1px solid #e8eaef;'
+            f'border-radius:12px;padding:12px 14px;margin-bottom:10px;'
+            f'box-shadow:0 1px 2px rgba(15,23,42,0.04), '
+            f'0 1px 3px rgba(15,23,42,0.03);">'
+            f'<div style="display:flex;justify-content:space-between;'
+            f'align-items:baseline;margin-bottom:8px;gap:8px;">'
+            f'<div style="font-size:11px;font-weight:700;color:#64748b;'
+            f'text-transform:uppercase;letter-spacing:0.5px;">'
+            f'Budget · AY 2025–26</div>'
+            f'<div style="font-size:12px;color:#64748b;white-space:nowrap;">'
+            f'<strong style="color:{NAVY};font-size:14px;">{_peso(awarded)}</strong>'
+            f' of {_peso(GRANT_BUDGET)} '
+            f'<span style="color:{GOLD};font-weight:700;">'
+            f'({awarded_pct:.0f}%)</span></div>'
+            f'</div>'
+            f'<div style="display:flex;height:10px;border-radius:5px;'
+            f'overflow:hidden;background:#f1f3f7;border:1px solid #e8eaef;">'
+            f'<div style="width:{awarded_w}%;background:{GOLD};"></div>'
+            f'</div>'
+            f'<div style="margin-top:7px;font-size:11.5px;color:#64748b;">'
+            f'{n_grants} project{"s" if n_grants != 1 else ""} · '
+            f'{_peso(remaining)} remaining · avg '
+            f'{_peso(awarded / n_grants) if n_grants else "—"}</div>'
+            f'</div>',
             unsafe_allow_html=True,
         )
 
-        # ----- Application status pipeline -----
+        if grants_db:
+            sorted_cols = sorted(by_col_amt.items(), key=lambda x: -x[1])
+            col_total = sum(amt for _, amt in sorted_cols) or 1
+            pie_colors = [CATEGORICAL_COLORS[i % len(CATEGORICAL_COLORS)]
+                          for i in range(len(sorted_cols))]
+            st.plotly_chart(
+                _donut([c for c, _ in sorted_cols],
+                       [a for _, a in sorted_cols],
+                       pie_colors,
+                       [by_col_cnt[c] for c, _ in sorted_cols],
+                       _peso(col_total), "AWARDED"),
+                use_container_width=True, config={"displayModeBar": False})
+            st.markdown(
+                _figure_line([(c, a, by_col_cnt[c]) for c, a in sorted_cols],
+                             pie_colors, lambda v: f"₱{v:,.0f}"),
+                unsafe_allow_html=True)
+        else:
+            st.info("No in-house grants in the database yet.")
+
+    # ---------------- RIGHT: external grants ----------------
+    with g_right:
+        st.markdown(
+            '<div class="section-heading">External Grants</div>',
+            unsafe_allow_html=True,
+        )
+        if ext_missing:
+            st.warning(
+                "⚠️ The `external_grants` table doesn't exist yet. "
+                "Run **`add_external_grants.sql`** in the Supabase SQL "
+                "Editor, then refresh this page."
+            )
+        elif not ext_grants:
+            st.info("No external grants logged yet.")
+        else:
+            ext_total = sum(float(g.get("amount") or 0) for g in ext_grants)
+            ext_review = sum(1 for g in ext_grants
+                             if _norm(g.get("status")) == "in review")
+            ext_awarded = sum(1 for g in ext_grants
+                              if _norm(g.get("status")) in ("awarded", "active"))
+            ext_completed = sum(1 for g in ext_grants
+                                if _norm(g.get("status")) == "completed")
+
+            # st.metric x5 cannot fit half width — compact chips instead.
+            chips = [("Grants", str(len(ext_grants))),
+                     ("Value", _peso2(ext_total)),
+                     ("In review", str(ext_review)),
+                     ("Awarded", str(ext_awarded)),
+                     ("Done", str(ext_completed))]
+            chips_html = "".join(
+                f'<div style="flex:1;min-width:62px;text-align:center;'
+                f'padding:7px 4px;background:white;border:1px solid #e8eaef;'
+                f'border-radius:9px;">'
+                f'<div style="font-size:9.5px;color:#94a3b8;font-weight:700;'
+                f'text-transform:uppercase;letter-spacing:0.5px;'
+                f'white-space:nowrap;">{lbl}</div>'
+                f'<div style="font-size:15px;font-weight:700;color:{NAVY};'
+                f'margin-top:2px;white-space:nowrap;">{val}</div>'
+                f'</div>'
+                for lbl, val in chips
+            )
+            st.markdown(
+                f'<div style="display:flex;gap:6px;margin-bottom:10px;">'
+                f'{chips_html}</div>',
+                unsafe_allow_html=True,
+            )
+
+            by_src_amt = {}
+            by_src_cnt = {}
+            for g in ext_grants:
+                src = g.get("funding_source") or "Other"
+                by_src_amt[src] = by_src_amt.get(src, 0) + float(
+                    g.get("amount") or 0)
+                by_src_cnt[src] = by_src_cnt.get(src, 0) + 1
+
+            sorted_src = sorted(by_src_amt.items(), key=lambda x: -x[1])
+            src_total = sum(amt for _, amt in sorted_src) or 1
+            src_colors = [CATEGORICAL_COLORS[i % len(CATEGORICAL_COLORS)]
+                          for i in range(len(sorted_src))]
+
+            st.markdown(
+                f'<div style="font-size:11px;font-weight:700;color:#64748b;'
+                f'text-transform:uppercase;letter-spacing:0.5px;'
+                f'margin:2px 0 -2px 0;">By funding source</div>',
+                unsafe_allow_html=True,
+            )
+            st.plotly_chart(
+                _donut([s for s, _ in sorted_src],
+                       [a for _, a in sorted_src],
+                       src_colors,
+                       [by_src_cnt[s] for s, _ in sorted_src],
+                       _peso2(src_total), "TOTAL VALUE"),
+                use_container_width=True, config={"displayModeBar": False})
+            st.markdown(
+                _figure_line([(s, a, by_src_cnt[s]) for s, a in sorted_src],
+                             src_colors, _peso2),
+                unsafe_allow_html=True)
+
+    # ----- Application status pipeline (full width, below both columns) -----
+    if ext_grants and not ext_missing:
+
         STATUS_BADGE = {
             "In Review":  ("#fef3c7", "#92400e", "#f59e0b"),  # bg, fg, border
             "Awarded":    ("#d1fae5", "#065f46", "#10b981"),
