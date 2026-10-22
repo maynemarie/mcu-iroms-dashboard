@@ -111,6 +111,24 @@ CATEGORICAL_COLORS = BRAND_CHART_COLORS
 SCOPUS_TOTAL_CITATIONS = 1493
 SCOPUS_H_INDEX = 21
 
+# Citations *received* in each year, read from the Scopus institution
+# profile on 22 October 2026. Note this is citation activity per year —
+# not the same thing as citations accrued by papers published in that
+# year, which is what summing citation_count over the local table gives
+# (that view showed 2026 as 3, because this year's papers have had no
+# time to be cited).
+#
+# Only 2022-2026 are recorded: the local table starts at 2022, while the
+# Scopus profile runs from 2001, so these five years do not sum to
+# SCOPUS_TOTAL_CITATIONS above.
+SCOPUS_CITATIONS_BY_YEAR = {
+    2022: 150,
+    2023: 143,
+    2024: 164,
+    2025: 222,
+    2026: 306,
+}
+
 st.markdown(f"""
 <style>
     /* ============================================================
@@ -3432,15 +3450,21 @@ elif page == "Scopus Publications (view)":
             fig_c.update_xaxes(type="category")  # years as discrete categories
             st.plotly_chart(fig_c, use_container_width=True)
 
-        # ---------- 3. Citation Impact Over Years (line + markers) ----------
-        if {"year", "citation_count"}.issubset(df.columns):
-            cite_df = (df.assign(citation_count=df["citation_count"].fillna(0))
-                       .groupby("year").agg(
-                           citations=("citation_count", "sum"),
-                           pubs=("citation_count", "count")).reset_index())
-            cite_df["avg_per_paper"] = (cite_df["citations"] /
-                                        cite_df["pubs"]).round(1)
-            cite_df = cite_df.sort_values("year")
+        # ---------- 3. Citations received per year (line + markers) ----------
+        # Plots SCOPUS_CITATIONS_BY_YEAR rather than a sum over the local
+        # table: see the constant for why the two differ.
+        if SCOPUS_CITATIONS_BY_YEAR:
+            pubs_by_year = {}
+            if {"year", "citation_count"}.issubset(df.columns):
+                pubs_by_year = (df.groupby("year")["citation_count"]
+                                  .count().to_dict())
+
+            cite_years = sorted(SCOPUS_CITATIONS_BY_YEAR)
+            cite_df = pd.DataFrame({
+                "year": cite_years,
+                "citations": [SCOPUS_CITATIONS_BY_YEAR[y] for y in cite_years],
+                "pubs": [int(pubs_by_year.get(y, 0)) for y in cite_years],
+            })
 
             cite_col, type_col = st.columns(2)
 
@@ -3454,16 +3478,21 @@ elif page == "Scopus Publications (view)":
                                                              width=2)),
                                        hovertemplate=(
                                            "<b>%{x}</b><br>"
-                                           "Citations: %{y}<br>"
-                                           "Pubs: %{customdata[0]}<br>"
-                                           "Avg/paper: %{customdata[1]}"
+                                           "Citations received: %{y}<br>"
+                                           "Publications: %{customdata[0]}"
                                            "<extra></extra>"),
-                                       customdata=cite_df[["pubs",
-                                                           "avg_per_paper"]])
-                _style(fig_cite, title="📊 Citation Impact by Year",
+                                       customdata=cite_df[["pubs"]])
+                _style(fig_cite, title="📊 Citations Received by Year",
                        show_legend=False)
-                fig_cite.update_layout(yaxis_title="Total citations")
+                fig_cite.update_layout(yaxis_title="Citations received")
+                fig_cite.update_xaxes(type="category")
                 st.plotly_chart(fig_cite, use_container_width=True)
+                st.caption(
+                    "Citations received each year, from the Scopus "
+                    "institution profile (2022–2026). The institution total "
+                    f"of {SCOPUS_TOTAL_CITATIONS:,} also includes years "
+                    "before 2022, which are not held locally."
+                )
 
             # ---------- 4. Publication Type donut ----------
             with type_col:
